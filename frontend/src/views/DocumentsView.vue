@@ -4,6 +4,7 @@
       <h2 class="page-title">知识库</h2>
       <div class="toolbar-actions">
         <el-input v-model="project" placeholder="项目" clearable @change="load" />
+        <el-button icon="Link" type="primary" @click="openPullWeb">拉取网页</el-button>
         <el-button icon="Refresh" @click="load">刷新</el-button>
       </div>
     </div>
@@ -173,6 +174,29 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="pullVisible" title="拉取网页到知识库" width="780px">
+      <el-form label-width="90px">
+        <el-form-item label="URL">
+          <el-input v-model="pullForm.url" placeholder="https://example.com/article" />
+        </el-form-item>
+        <el-form-item label="项目">
+          <el-input v-model="pullForm.project" />
+        </el-form-item>
+        <el-form-item label="要求">
+          <el-input
+            v-model="pullForm.instruction"
+            type="textarea"
+            :rows="3"
+            placeholder="可选：例如只提取架构、组件职责和关键概念"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pullVisible = false">取消</el-button>
+        <el-button type="primary" icon="Download" :loading="pulling" :disabled="!pullForm.url.trim()" @click="pullWeb">开始拉取</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="tasksVisible" title="文档任务" width="760px">
       <el-table :data="tasks" v-loading="tasksLoading">
         <el-table-column prop="task_type" label="类型" width="120" />
@@ -232,6 +256,13 @@ const reprocessing = ref(false)
 const editorVisible = ref(false)
 const editorContent = ref('')
 const editorSaving = ref(false)
+const pullVisible = ref(false)
+const pulling = ref(false)
+const pullForm = ref({
+  url: 'https://jimmysong.io/zh/book/kubernetes-handbook/architecture/',
+  project: 'default',
+  instruction: '整理 Kubernetes 架构知识，保留组件职责、控制面、节点、网络和调度相关概念。',
+})
 const tasksVisible = ref(false)
 const tasksLoading = ref(false)
 const tasks = ref([])
@@ -359,6 +390,33 @@ function openEditor(row) {
   selectedDocument.value = row
   editorContent.value = row.raw_content || row.content || ''
   editorVisible.value = true
+}
+
+function openPullWeb() {
+  pullForm.value.project = project.value || 'default'
+  pullVisible.value = true
+}
+
+async function pullWeb() {
+  const payload = {
+    url: pullForm.value.url.trim(),
+    project: pullForm.value.project || project.value || 'default',
+    instruction: pullForm.value.instruction || '',
+  }
+  if (!payload.url) return
+  pulling.value = true
+  try {
+    const { data } = await client.post('/api/knowledge/pull-url', payload)
+    pullVisible.value = false
+    selectedId.value = data.id
+    detail.value = data
+    ElMessage.success('已创建网页拉取任务')
+    await load()
+  } catch (error) {
+    ElMessage.error(error.response?.data?.detail || '网页拉取失败')
+  } finally {
+    pulling.value = false
+  }
 }
 
 async function saveEditor() {

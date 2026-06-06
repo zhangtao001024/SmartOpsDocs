@@ -38,6 +38,21 @@
           </el-form-item>
         </el-form>
       </div>
+
+      <div class="panel">
+        <h3>网页知识拉取模型</h3>
+        <el-form :model="form.pull" label-width="100px">
+          <el-form-item label="API Key">
+            <el-input v-model="form.pull.api_key" type="password" show-password placeholder="sk-..." />
+          </el-form-item>
+          <el-form-item label="Base URL">
+            <el-input v-model="form.pull.base_url" placeholder="https://api.openai.com/v1，留空用默认" />
+          </el-form-item>
+          <el-form-item label="模型">
+            <el-input v-model="form.pull.model" placeholder="gpt-4o-mini" />
+          </el-form-item>
+        </el-form>
+      </div>
     </div>
 
     <div class="muted" style="margin-top: 12px; font-size: 13px">
@@ -55,6 +70,7 @@ const saving = ref(false)
 const form = reactive({
   chat: { api_key: '', base_url: '', model: 'gpt-4o-mini', vision_model: '' },
   optimize: { api_key: '', base_url: '', model: 'gpt-4o-mini', vision_model: '' },
+  pull: { api_key: '', base_url: '', model: 'gpt-4o-mini', vision_model: '' },
 })
 
 async function load() {
@@ -62,13 +78,14 @@ async function load() {
     const resp = await client.get('/api/settings')
     Object.assign(form.chat, resp.data.chat)
     Object.assign(form.optimize, resp.data.optimize)
+    Object.assign(form.pull, resp.data.pull)
   } catch (e) { /* ignore */ }
 }
 
 async function save() {
   saving.value = true
   try {
-    await client.put('/api/settings', { chat: form.chat, optimize: form.optimize })
+    await client.put('/api/settings', { chat: form.chat, optimize: form.optimize, pull: form.pull })
     ElMessage.success('模型配置已保存')
   } catch (e) {
     ElMessage.error('保存失败')

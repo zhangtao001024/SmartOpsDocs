@@ -38,10 +38,26 @@ class MarkdownUpdate(BaseModel):
     content: str
 
 
+class WebPullRequest(BaseModel):
+    url: str
+    project: str = "default"
+    instruction: str = ""
+
+
 def _run_document_task(document_id: int, task_id: int | None = None) -> None:
     db = SessionLocal()
     try:
         process_document(db, document_id, task_id)
+    finally:
+        db.close()
+
+
+def _run_web_pull_task(document_id: int, url: str, instruction: str, task_id: int | None = None) -> None:
+    from app.services.web_pull_service import process_web_pull
+
+    db = SessionLocal()
+    try:
+        process_web_pull(db, document_id, url, instruction, task_id)
     finally:
         db.close()
 
@@ -82,6 +98,25 @@ def upload_document(
     task = create_document_task(db, document, "parse")
     background_tasks.add_task(_run_document_task, document.id, task.id)
     return document
+
+
+@router.post("/knowledge/pull-url")
+def pull_url_to_knowledge(
+    payload: WebPullRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    _: User = Depends(current_user),
+):
+    url = payload.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="URL 不能为空")
+    document = Document(title=url, file_path=url, project=payload.project or "default", status="uploaded")
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+    task = create_document_task(db, document, "web-pull")
+    background_tasks.add_task(_run_web_pull_task, document.id, url, payload.instruction, task.id)
+    return _document_detail_payload(db, document)
 
 
 @router.get("/documents")

@@ -11,6 +11,7 @@
 - Docker 容器列表、启动、停止、重启、日志、inspect、进程 top、镜像、网络、卷
 - K8s 集群接入、命名空间、Node、Pod、Deployment、StatefulSet、DaemonSet、Service、Ingress、Job、Event、Pod 日志/Describe/JSON、Deployment 重启/伸缩
 - 文档上传、解析、切分、入库
+- 网页 URL 拉取入库，可单独配置知识拉取模型
 - Word 等文档导入后生成标准 Markdown，图片按原文位置保存并在阅读页原位展示
 - 查看文档解析全文和分块内容
 - 文档解析任务状态、Markdown 修订版本和版本恢复
@@ -125,6 +126,12 @@ OPENAI_VISION_MODEL=gpt-4o-mini
 DOCX_VISION_MAX_IMAGES=20
 ```
 
+前端「模型设置」中可以分别配置：
+
+- AI 助手模型：用于聊天问答
+- 知识库优化模型：用于文档优化和 Word 图片理解
+- 网页知识拉取模型：用于把网页内容清洗整理成 Markdown 后入库
+
 图文 Word 解析策略：
 
 - `.docx` 会按原文顺序转换为 Markdown，正文、表格和内嵌图片会尽量保持原始位置
@@ -163,3 +170,24 @@ Content-Type: application/json
 ```
 
 返回结果包含 `document_id`、`document_title`、`chunk_id`、`source`、`content` 和 `preview`，可直接作为 RAG 上下文。
+
+## 网页知识拉取
+
+知识库页面点击「拉取网页」，输入 URL 后会创建后台任务：
+
+1. 抓取网页 HTML
+2. 抽取正文
+3. 使用「网页知识拉取模型」整理成 Markdown
+4. 重建知识库索引
+
+未配置网页知识拉取模型时，会使用本地抽取文本作为 Markdown 草稿。
+
+示例 URL：
+
+```text
+https://jimmysong.io/zh/book/kubernetes-handbook/architecture/
+```
+
+## Agent 规划
+
+后续 agent 接入预留 OpenClaw 作为内核方向。真实接入时需要确认 OpenClaw 的部署方式、API 地址、认证方式和工具调用协议，再把当前 `/api/agent/knowledge/query` 作为知识检索工具挂入 agent runtime。

@@ -22,11 +22,13 @@ class ModelConfig(BaseModel):
 class SettingsRequest(BaseModel):
     chat: ModelConfig = ModelConfig()
     optimize: ModelConfig = ModelConfig()
+    pull: ModelConfig = ModelConfig()
 
 
 class SettingsResponse(BaseModel):
     chat: ModelConfig
     optimize: ModelConfig
+    pull: ModelConfig
 
 
 def _load_config(db: Session, prefix: str, env_fallback: dict) -> ModelConfig:
@@ -63,6 +65,7 @@ def get_settings_api(db: Session = Depends(get_db), _: User = Depends(current_us
     return SettingsResponse(
         chat=_load_config(db, "chat", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
         optimize=_load_config(db, "optimize", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model, "vision_model": env.openai_vision_model or ""}),
+        pull=_load_config(db, "pull", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
     )
 
 
@@ -70,9 +73,11 @@ def get_settings_api(db: Session = Depends(get_db), _: User = Depends(current_us
 def update_settings_api(payload: SettingsRequest, db: Session = Depends(get_db), _: User = Depends(current_user)):
     _save_config(db, "chat", payload.chat)
     _save_config(db, "optimize", payload.optimize)
+    _save_config(db, "pull", payload.pull)
     db.commit()
     env = get_settings()
     return SettingsResponse(
         chat=_load_config(db, "chat", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
         optimize=_load_config(db, "optimize", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model, "vision_model": env.openai_vision_model or ""}),
+        pull=_load_config(db, "pull", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
     )
