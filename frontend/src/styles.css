@@ -1,0 +1,406 @@
+/* ============================================
+   SmartOpsDocs — Design Tokens & Base Styles
+   ============================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ---- Light Theme (default) ---- */
+:root {
+  /* Surfaces */
+  --app-bg: #f4f6fa;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f8fafc;
+  --app-surface-hover: #f1f5f9;
+
+  /* Borders */
+  --app-border: #dfe5ee;
+  --app-border-soft: #edf1f7;
+  --app-border-strong: #cbd5e1;
+
+  /* Text */
+  --app-text: #172033;
+  --app-text-soft: #374151;
+  --app-text-heading: #111827;
+  --app-muted: #687385;
+  --app-muted-soft: #94a3b8;
+
+  /* Brand */
+  --app-primary: #2563eb;
+  --app-primary-soft: #eff6ff;
+  --app-primary-softer: #eef2ff;
+  --app-primary-border: #93c5fd;
+  --app-success: #059669;
+  --app-success-soft: #ecfdf5;
+  --app-warning: #d97706;
+  --app-warning-soft: #fffbeb;
+  --app-danger: #dc2626;
+  --app-danger-soft: #fef2f2;
+
+  /* Shadows */
+  --app-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --app-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  --app-shadow-lg: 0 18px 50px rgba(15, 23, 42, 0.10);
+
+  /* Radius */
+  --app-radius-sm: 4px;
+  --app-radius: 6px;
+  --app-radius-md: 8px;
+  --app-radius-lg: 12px;
+
+  /* Typography */
+  --app-font-sans: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --app-font-mono: "JetBrains Mono", Consolas, "Cascadia Code", monospace;
+
+  /* Code & terminal */
+  --app-code-bg: #f3f4f6;
+  --app-code-text: #1f2937;
+  --app-terminal-bg: #111827;
+  --app-terminal-text: #d1d5db;
+
+  /* Scrollbar */
+  --app-scrollbar-track: transparent;
+  --app-scrollbar-thumb: #cbd5e1;
+
+  /* Focus */
+  --app-focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.25);
+
+  /* Sidebar */
+  --app-sidebar-bg: #ffffff;
+  --app-sidebar-border: #dfe5ee;
+  --app-sidebar-item-hover: #f1f5f9;
+
+  /* Header */
+  --app-header-bg: rgba(255, 255, 255, 0.92);
+  --app-header-border: #dfe5ee;
+
+  /* Stat card icon */
+  --app-stat-icon-bg: #eff6ff;
+  --app-stat-icon-color: #2563eb;
+}
+
+/* ---- Dark Theme ---- */
+html.dark {
+  --app-bg: #0f172a;
+  --app-surface: #1e293b;
+  --app-surface-soft: #172133;
+  --app-surface-hover: #1a2740;
+
+  --app-border: #334155;
+  --app-border-soft: #1e293b;
+  --app-border-strong: #475569;
+
+  --app-text: #e2e8f0;
+  --app-text-soft: #cbd5e1;
+  --app-text-heading: #f1f5f9;
+  --app-muted: #94a3b8;
+  --app-muted-soft: #64748b;
+
+  --app-primary: #3b82f6;
+  --app-primary-soft: #1e3a5f;
+  --app-primary-softer: #172744;
+  --app-primary-border: #1d4ed8;
+  --app-success: #10b981;
+  --app-success-soft: #064e3b;
+  --app-warning: #f59e0b;
+  --app-warning-soft: #451a03;
+  --app-danger: #ef4444;
+  --app-danger-soft: #450a0a;
+
+  --app-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --app-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  --app-shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.45);
+
+  --app-code-bg: #1e293b;
+  --app-code-text: #e2e8f0;
+  --app-terminal-bg: #0a0f1a;
+  --app-terminal-text: #d1d5db;
+
+  --app-scrollbar-track: transparent;
+  --app-scrollbar-thumb: #475569;
+
+  --app-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.35);
+
+  --app-sidebar-bg: #1e293b;
+  --app-sidebar-border: #334155;
+  --app-sidebar-item-hover: #172133;
+
+  --app-header-bg: rgba(15, 23, 42, 0.92);
+  --app-header-border: #334155;
+
+  --app-stat-icon-bg: #1e3a5f;
+  --app-stat-icon-color: #60a5fa;
+
+  /* Element Plus dark overrides */
+  --el-bg-color: var(--app-surface);
+  --el-bg-color-overlay: var(--app-surface);
+  --el-bg-color-page: var(--app-bg);
+  --el-text-color-primary: var(--app-text-heading);
+  --el-text-color-regular: var(--app-text);
+  --el-text-color-secondary: var(--app-muted);
+  --el-text-color-placeholder: var(--app-muted-soft);
+  --el-border-color: var(--app-border);
+  --el-border-color-light: var(--app-border-soft);
+  --el-border-color-lighter: var(--app-border-soft);
+  --el-fill-color: var(--app-surface-soft);
+  --el-fill-color-blank: var(--app-surface);
+  --el-fill-color-light: var(--app-surface-hover);
+  --el-color-primary: var(--app-primary);
+  --el-color-primary-light-3: var(--app-primary-soft);
+  --el-color-primary-light-5: var(--app-primary-softer);
+  --el-color-primary-light-7: var(--app-primary-softer);
+  --el-color-primary-light-9: var(--app-primary-softer);
+  --el-mask-color: rgba(0, 0, 0, 0.65);
+  --el-color-info: #64748b;
+  --el-color-info-light-3: #475569;
+  --el-color-info-light-5: #334155;
+  --el-color-info-light-7: #1e293b;
+  --el-color-info-light-9: #0f172a;
+
+  color-scheme: dark;
+}
+
+/* Element Plus light overrides (explicit) */
+:root {
+  --el-bg-color: var(--app-surface);
+  --el-bg-color-overlay: var(--app-surface);
+  --el-bg-color-page: var(--app-bg);
+  --el-text-color-primary: var(--app-text-heading);
+  --el-text-color-regular: var(--app-text);
+  --el-text-color-secondary: var(--app-muted);
+  --el-text-color-placeholder: var(--app-muted-soft);
+  --el-border-color: var(--app-border);
+  --el-border-color-light: var(--app-border-soft);
+  --el-border-color-lighter: var(--app-border-soft);
+  --el-fill-color: var(--app-surface-soft);
+  --el-fill-color-blank: var(--app-surface);
+  --el-fill-color-light: var(--app-surface-hover);
+  --el-color-primary: var(--app-primary);
+  --el-color-primary-light-3: var(--app-primary-soft);
+  --el-color-primary-light-5: var(--app-primary-softer);
+  --el-color-primary-light-7: var(--app-primary-softer);
+  --el-color-primary-light-9: var(--app-primary-softer);
+}
+
+/* ---- Base ---- */
+body {
+  margin: 0;
+  color: var(--app-text);
+  background: var(--app-bg);
+  font-family: var(--app-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+::selection {
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+}
+
+button, [role="button"], .clickable {
+  cursor: pointer;
+}
+
+a {
+  color: var(--app-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* ---- Focus visible ---- */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--app-focus-ring);
+  border-radius: var(--app-radius-sm);
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--app-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: var(--app-scrollbar-thumb);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-muted-soft);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-scrollbar-thumb) var(--app-scrollbar-track);
+}
+
+/* ---- Shared utility classes ---- */
+.page-title {
+  margin: 0;
+  color: var(--app-text-heading);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.panel {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  padding: 18px;
+  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.log-box {
+  min-height: 240px;
+  max-height: 520px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--app-radius);
+  color: var(--app-terminal-text);
+  background: var(--app-terminal-bg);
+  white-space: pre-wrap;
+  font-family: var(--app-font-mono);
+  font-size: 13px;
+}
+
+.muted {
+  color: var(--app-muted);
+}
+
+/* ---- Element Plus overrides (both themes) ---- */
+.el-button {
+  border-radius: var(--app-radius);
+  font-weight: 600;
+}
+
+.el-button:focus-visible {
+  box-shadow: var(--app-focus-ring);
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: var(--app-radius);
+  box-shadow: 0 0 0 1px var(--app-border) inset;
+}
+
+.el-table {
+  --el-table-header-bg-color: var(--app-surface-soft);
+  --el-table-header-text-color: var(--app-muted);
+  --el-table-border-color: var(--app-border-soft);
+  --el-table-tr-bg-color: var(--app-surface);
+  --el-table-row-hover-bg-color: var(--app-surface-hover);
+  border-radius: var(--app-radius-md);
+}
+
+.el-table th.el-table__cell {
+  font-weight: 700;
+}
+
+.el-dialog {
+  border-radius: var(--app-radius-md);
+}
+
+.el-dialog__header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--app-border-soft);
+}
+
+.el-tabs__item {
+  font-weight: 650;
+}
+
+.el-tag {
+  border-radius: var(--app-radius-sm);
+}
+
+.el-menu {
+  border-right: 0 !important;
+  background: transparent !important;
+}
+
+/* ---- xterm.js ---- */
+.xterm {
+  padding: 8px;
+  height: 100%;
+}
+
+/* ---- Table scroll hint ---- */
+.el-table::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  pointer-events: none;
+  background: linear-gradient(to left, var(--app-surface-soft), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.el-table.is-scrolling-right::after {
+  opacity: 1;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 24px) !important;
+  }
+
+  /* Touch-friendly tap targets */
+  .el-button {
+    min-height: 40px;
+  }
+
+  .el-menu-item {
+    min-height: 44px;
+  }
+
+  /* Table scroll affordance on mobile */
+  .el-table {
+    font-size: 13px;
+  }
+
+  .page-title {
+    font-size: 19px;
+  }
+}
