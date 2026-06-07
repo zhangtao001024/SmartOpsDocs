@@ -1,50 +1,79 @@
 <template>
-  <div>
-    <div class="toolbar">
-      <h2 class="page-title">运维概览</h2>
-      <el-button icon="Refresh" :loading="loading" @click="load">刷新</el-button>
+  <div class="dashboard-page">
+    <div class="overview-hero">
+      <div>
+        <p class="eyebrow">Operations overview</p>
+        <h2 class="page-title">运维概览</h2>
+        <p class="hero-copy">集中查看资产在线情况、知识库解析状态和常用入口。</p>
+        <div class="hero-metrics" aria-label="运维关键指标">
+          <span><strong>{{ stats.servers_online }}</strong> 在线资产</span>
+          <span><strong>{{ stats.documents_parsing }}</strong> 解析任务</span>
+          <span><strong>{{ stats.documents_failed }}</strong> 失败文档</span>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <div class="sync-status">
+          <span class="status-dot"></span>
+          本地运行
+        </div>
+        <el-button icon="Refresh" :loading="loading" @click="load">刷新</el-button>
+      </div>
     </div>
     <div v-if="loading && !loaded" class="dash-grid">
       <SkeletonBox v-for="i in 4" :key="i" height="124px" />
     </div>
     <div v-else class="dash-grid">
-      <div class="stat-card">
-        <el-icon><Monitor /></el-icon>
-        <div>
+      <div class="stat-card primary">
+        <div class="stat-head">
           <div class="stat-label">服务器</div>
+          <el-icon><Monitor /></el-icon>
+        </div>
+        <div>
           <div class="stat-num">{{ stats.servers }}</div>
-          <div class="stat-sub">{{ stats.servers_online }} 台在线</div>
+          <div class="stat-sub">{{ stats.servers_online }} 台在线，{{ stats.servers - stats.servers_online }} 台待确认</div>
         </div>
       </div>
       <div class="stat-card">
-        <el-icon><Connection /></el-icon>
-        <div>
+        <div class="stat-head">
           <div class="stat-label">K8s 集群</div>
+          <el-icon><Connection /></el-icon>
+        </div>
+        <div>
           <div class="stat-num">{{ stats.clusters }}</div>
           <div class="stat-sub">已接入集群</div>
         </div>
       </div>
       <div class="stat-card">
-        <el-icon><Document /></el-icon>
-        <div>
+        <div class="stat-head">
           <div class="stat-label">知识文档</div>
+          <el-icon><Document /></el-icon>
+        </div>
+        <div>
           <div class="stat-num">{{ stats.documents }}</div>
           <div class="stat-sub">{{ stats.chunks }} 个片段 / {{ stats.documents_parsing }} 个解析中</div>
         </div>
       </div>
       <div class="stat-card">
-        <el-icon><Warning /></el-icon>
-        <div>
+        <div class="stat-head">
           <div class="stat-label">离线 / 未知</div>
+          <el-icon><Warning /></el-icon>
+        </div>
+        <div>
           <div class="stat-num">{{ stats.servers - stats.servers_online }}</div>
           <div class="stat-sub">待确认资产</div>
         </div>
       </div>
     </div>
-    <div class="charts-row" v-if="loaded">
-      <div class="panel chart-panel">
+
+    <div class="workspace-grid" v-if="loaded">
+      <div class="panel chart-panel server-panel">
+        <div class="panel-copy">
+          <p class="panel-kicker">Server health</p>
+          <h3>资产在线状态</h3>
+          <p class="muted">优先处理离线和未知资产，保证 AI 问答引用的环境上下文保持有效。</p>
+        </div>
         <DonutChart
-          label="台服务器"
+          label="台资产"
           :segments="[
             { value: stats.servers_online, color: 'var(--app-success)', label: '在线' },
             { value: stats.servers - stats.servers_online, color: 'var(--app-muted-soft)', label: '离线/未知' },
@@ -55,7 +84,7 @@
           <div class="legend-item"><span class="legend-dot muted"></span>离线/未知 {{ stats.servers - stats.servers_online }}</div>
         </div>
       </div>
-      <div class="panel chart-panel">
+      <div class="panel chart-panel knowledge-panel">
         <BarChart
           title="知识库统计"
           :bars="[
@@ -66,17 +95,18 @@
           ]"
         />
       </div>
-    </div>
 
-    <div class="quick-panel panel">
-      <div>
-        <h3>快捷入口</h3>
-        <p class="muted">常用运维工作流</p>
-      </div>
-      <div class="quick-actions">
-        <el-button type="primary" icon="Plus" @click="$router.push('/servers')">新增服务器</el-button>
-        <el-button icon="Upload" @click="$router.push('/documents')">上传文档</el-button>
-        <el-button icon="ChatDotRound" @click="$router.push('/chat')">AI 助手</el-button>
+      <div class="quick-panel panel">
+        <div>
+          <p class="panel-kicker">Common flows</p>
+          <h3>快捷入口</h3>
+          <p class="muted">常用运维工作流</p>
+        </div>
+        <div class="quick-actions">
+          <el-button type="primary" icon="Plus" @click="$router.push('/servers')">新增服务器</el-button>
+          <el-button icon="Upload" @click="$router.push('/documents')">上传文档</el-button>
+          <el-button icon="ChatDotRound" @click="$router.push('/chat')">AI 助手</el-button>
+        </div>
       </div>
     </div>
   </div>
@@ -116,73 +146,189 @@ onMounted(load)
 </script>
 
 <style scoped>
+.dashboard-page {
+  display: grid;
+  gap: 18px;
+}
+
+.overview-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 168px;
+  padding: 24px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background:
+    linear-gradient(90deg, rgba(15, 118, 110, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18)),
+    var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+:global(html.dark) .overview-hero {
+  background:
+    linear-gradient(90deg, rgba(45, 212, 191, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
+    var(--app-surface);
+}
+
+.eyebrow,
+.panel-kicker {
+  margin: 0 0 8px;
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.hero-copy {
+  max-width: 56ch;
+  margin: 10px 0 0;
+  color: var(--app-muted);
+  line-height: 1.7;
+}
+
+.hero-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.hero-metrics span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius);
+  color: var(--app-muted);
+  background: color-mix(in srgb, var(--app-surface-raised) 74%, transparent);
+  box-shadow: var(--app-shadow-xs);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.hero-metrics strong {
+  color: var(--app-text-heading);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  color: var(--app-muted);
+  background: var(--app-surface-soft);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--app-success);
+  box-shadow: 0 0 0 4px var(--app-success-soft);
+}
+
 .dash-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1.35fr repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
 .stat-card {
-  display: flex;
-  gap: 14px;
-  align-items: center;
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
   min-height: 124px;
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-md);
-  background: var(--app-surface);
+  border-radius: var(--app-radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0)),
+    var(--app-surface);
   box-shadow: var(--app-shadow);
   padding: 20px;
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.2s;
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--app-shadow-lg);
+:global(html.dark) .stat-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    var(--app-surface);
 }
 
-.stat-card .el-icon {
-  width: 42px;
-  height: 42px;
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--app-shadow-hover);
+}
+
+.stat-card.primary {
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.14), transparent 68%),
+    var(--app-primary-softer);
+}
+
+.stat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stat-head .el-icon {
+  width: 38px;
+  height: 38px;
   border-radius: var(--app-radius-md);
   color: var(--app-stat-icon-color);
   background: var(--app-stat-icon-bg);
-  font-size: 22px;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
 .stat-num {
   color: var(--app-text-heading);
-  font-size: 34px;
-  font-weight: 800;
+  font-size: 36px;
+  font-weight: 820;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-label {
-  margin-bottom: 6px;
   color: var(--app-muted);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 760;
 }
 
 .stat-sub {
   margin-top: 6px;
   color: var(--app-muted-soft);
   font-size: 12px;
+  line-height: 1.45;
 }
 
-.quick-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-top: 20px;
-}
-
-.charts-row {
+.workspace-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.25fr);
   gap: 16px;
-  margin-top: 16px;
 }
 
 .chart-panel {
@@ -190,6 +336,32 @@ onMounted(load)
   flex-direction: column;
   align-items: center;
   gap: 12px;
+}
+
+.server-panel {
+  align-items: stretch;
+}
+
+.server-panel .donut-chart {
+  align-self: center;
+}
+
+.knowledge-panel {
+  justify-content: center;
+}
+
+.panel-copy h3,
+.quick-panel h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--app-text-heading);
+}
+
+.panel-copy p:last-child {
+  max-width: 42ch;
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .chart-legend {
@@ -217,10 +389,14 @@ onMounted(load)
 .legend-dot.success { background: var(--app-success); }
 .legend-dot.muted   { background: var(--app-muted-soft); }
 
-.quick-panel h3 {
-  margin: 0;
-  font-size: 17px;
-  color: var(--app-text-heading);
+.quick-panel {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  grid-column: 1 / -1;
+  gap: 18px;
+  background:
+    linear-gradient(90deg, var(--app-surface), var(--app-primary-softer));
 }
 
 .quick-panel p {
@@ -232,18 +408,30 @@ onMounted(load)
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 @media (max-width: 980px) {
   .dash-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .charts-row {
+  .workspace-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 700px) {
+  .overview-hero {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+  }
+
   .dash-grid {
     grid-template-columns: 1fr;
   }

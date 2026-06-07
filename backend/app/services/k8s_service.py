@@ -29,6 +29,42 @@ def _clients(cluster: KubeCluster):
         Path(path).unlink(missing_ok=True)
 
 
+def cluster_overview(cluster: KubeCluster) -> dict:
+    core, apps, networking, batch = _clients(cluster)
+    namespaces = core.list_namespace().items
+    nodes = core.list_node().items
+    pods = core.list_pod_for_all_namespaces().items
+    deployments = apps.list_deployment_for_all_namespaces().items
+    services = core.list_service_for_all_namespaces().items
+    ingresses = networking.list_ingress_for_all_namespaces().items
+    jobs = batch.list_job_for_all_namespaces().items
+    warning_events = [
+        event
+        for event in core.list_event_for_all_namespaces().items
+        if (event.type or "").lower() == "warning"
+    ]
+    ready_nodes = 0
+    for node in nodes:
+        conditions = {item.type: item.status for item in (node.status.conditions or [])}
+        if conditions.get("Ready") == "True":
+            ready_nodes += 1
+    return {
+        "namespaces": len(namespaces),
+        "nodes": {"total": len(nodes), "ready": ready_nodes},
+        "pods": {
+            "total": len(pods),
+            "running": len([pod for pod in pods if pod.status.phase == "Running"]),
+            "pending": len([pod for pod in pods if pod.status.phase == "Pending"]),
+            "failed": len([pod for pod in pods if pod.status.phase == "Failed"]),
+        },
+        "deployments": len(deployments),
+        "services": len(services),
+        "ingresses": len(ingresses),
+        "jobs": len(jobs),
+        "warnings": len(warning_events),
+    }
+
+
 def list_namespaces(cluster: KubeCluster) -> list[str]:
     core, _, _, _ = _clients(cluster)
     return [item.metadata.name for item in core.list_namespace().items]
@@ -116,6 +152,12 @@ def pod_describe(cluster: KubeCluster, namespace: str, pod_name: str) -> dict:
             )[:30]
         ],
     }
+
+
+def delete_pod(cluster: KubeCluster, namespace: str, pod_name: str) -> dict:
+    core, _, _, _ = _clients(cluster)
+    core.delete_namespaced_pod(name=pod_name, namespace=namespace)
+    return {"ok": True, "name": pod_name, "namespace": namespace}
 
 
 def list_events(cluster: KubeCluster, namespace: str | None = None, limit: int = 80) -> list[dict]:
@@ -260,6 +302,34 @@ def list_jobs(cluster: KubeCluster, namespace: str | None = None) -> list[dict]:
     ]
 
 
+def resource_json(cluster: KubeCluster, kind: str, namespace: str | None, name: str) -> dict:
+    try:
+        from kubernetes import client
+    except ImportError as exc:
+        raise RuntimeError("kubernetes Python Client 未安装，无法访问集群") from exc
+    core, apps, networking, batch = _clients(cluster)
+    kind_key = kind.lower()
+    if kind_key == "pod":
+        item = core.read_namespaced_pod(name=name, namespace=namespace)
+    elif kind_key == "service":
+        item = core.read_namespaced_service(name=name, namespace=namespace)
+    elif kind_key == "node":
+        item = core.read_node(name=name)
+    elif kind_key == "deployment":
+        item = apps.read_namespaced_deployment(name=name, namespace=namespace)
+    elif kind_key == "statefulset":
+        item = apps.read_namespaced_stateful_set(name=name, namespace=namespace)
+    elif kind_key == "daemonset":
+        item = apps.read_namespaced_daemon_set(name=name, namespace=namespace)
+    elif kind_key == "ingress":
+        item = networking.read_namespaced_ingress(name=name, namespace=namespace)
+    elif kind_key == "job":
+        item = batch.read_namespaced_job(name=name, namespace=namespace)
+    else:
+        raise ValueError("不支持的资源类型")
+    return client.ApiClient().sanitize_for_serialization(item)
+
+
 def restart_deployment(cluster: KubeCluster, namespace: str, name: str) -> dict:
     _, apps, _, _ = _clients(cluster)
     body = {
@@ -277,9 +347,48 @@ def restart_deployment(cluster: KubeCluster, namespace: str, name: str) -> dict:
     return {"ok": True}
 
 
+def restart_workload(cluster: KubeCluster, namespace: str, name: str, kind: str = "deployment") -> dict:
+    _, apps, _, _ = _clients(cluster)
+    body = {
+        "spec": {
+            "template": {
+                "metadata": {
+                    "annotations": {
+                        "smartopsdocs/restarted-at": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            }
+        }
+    }
+    kind_key = kind.lower()
+    if kind_key == "deployment":
+        apps.patch_namespaced_deployment(name=name, namespace=namespace, body=body)
+    elif kind_key == "statefulset":
+        apps.patch_namespaced_stateful_set(name=name, namespace=namespace, body=body)
+    elif kind_key == "daemonset":
+        apps.patch_namespaced_daemon_set(name=name, namespace=namespace, body=body)
+    else:
+        raise ValueError("不支持重启该资源类型")
+    return {"ok": True, "kind": kind_key, "name": name, "namespace": namespace}
+
+
 def scale_deployment(cluster: KubeCluster, namespace: str, name: str, replicas: int) -> dict:
     _, apps, _, _ = _clients(cluster)
     replicas = min(max(int(replicas), 0), 100)
     body = {"spec": {"replicas": replicas}}
     apps.patch_namespaced_deployment_scale(name=name, namespace=namespace, body=body)
     return {"ok": True, "replicas": replicas}
+
+
+def scale_workload(cluster: KubeCluster, namespace: str, name: str, replicas: int, kind: str = "deployment") -> dict:
+    _, apps, _, _ = _clients(cluster)
+    replicas = min(max(int(replicas), 0), 100)
+    body = {"spec": {"replicas": replicas}}
+    kind_key = kind.lower()
+    if kind_key == "deployment":
+        apps.patch_namespaced_deployment_scale(name=name, namespace=namespace, body=body)
+    elif kind_key == "statefulset":
+        apps.patch_namespaced_stateful_set_scale(name=name, namespace=namespace, body=body)
+    else:
+        raise ValueError("不支持伸缩该资源类型")
+    return {"ok": True, "kind": kind_key, "replicas": replicas}

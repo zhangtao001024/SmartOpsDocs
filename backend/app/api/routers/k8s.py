@@ -9,6 +9,8 @@ from app.core.database import get_db
 from app.models.entities import KubeCluster, User
 from app.schemas.dto import KubeClusterCreate, KubeClusterOut
 from app.services.k8s_service import (
+    cluster_overview,
+    delete_pod,
     list_deployments,
     list_daemonsets,
     list_events,
@@ -22,8 +24,11 @@ from app.services.k8s_service import (
     pod_describe,
     pod_json,
     pod_logs,
+    resource_json,
     restart_deployment,
+    restart_workload,
     scale_deployment,
+    scale_workload,
 )
 
 router = APIRouter(prefix="/api", tags=["k8s"])
@@ -31,6 +36,15 @@ router = APIRouter(prefix="/api", tags=["k8s"])
 
 class DeploymentScaleRequest(BaseModel):
     replicas: int
+
+
+class WorkloadScaleRequest(BaseModel):
+    replicas: int
+    kind: str = "deployment"
+
+
+class WorkloadRestartRequest(BaseModel):
+    kind: str = "deployment"
 
 
 @router.get("/k8s/clusters", response_model=list[KubeClusterOut])
@@ -64,6 +78,17 @@ def kube_namespaces(cluster_id: int, db: Session = Depends(get_db), _: User = De
         raise HTTPException(status_code=404, detail="集群不存在")
     try:
         return list_namespaces(cluster)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/k8s/clusters/{cluster_id}/overview")
+def kube_cluster_overview(cluster_id: int, db: Session = Depends(get_db), _: User = Depends(current_user)):
+    cluster = db.get(KubeCluster, cluster_id)
+    if not cluster:
+        raise HTTPException(status_code=404, detail="集群不存在")
+    try:
+        return cluster_overview(cluster)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -178,6 +203,24 @@ def kube_pod_json(pod_name: str, cluster_id: int, namespace: str, db: Session = 
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.get("/k8s/resources/{kind}/{name}/json")
+def kube_resource_json(
+    kind: str,
+    name: str,
+    cluster_id: int,
+    namespace: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(current_user),
+):
+    cluster = db.get(KubeCluster, cluster_id)
+    if not cluster:
+        raise HTTPException(status_code=404, detail="集群不存在")
+    try:
+        return resource_json(cluster, kind, namespace, name)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @router.get("/k8s/pods/{pod_name}/describe")
 def kube_pod_describe(pod_name: str, cluster_id: int, namespace: str, db: Session = Depends(get_db), _: User = Depends(current_user)):
     cluster = db.get(KubeCluster, cluster_id)
@@ -185,6 +228,17 @@ def kube_pod_describe(pod_name: str, cluster_id: int, namespace: str, db: Sessio
         raise HTTPException(status_code=404, detail="集群不存在")
     try:
         return pod_describe(cluster, namespace, pod_name)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.delete("/k8s/pods/{pod_name}")
+def kube_pod_delete(pod_name: str, cluster_id: int, namespace: str, db: Session = Depends(get_db), _: User = Depends(current_user)):
+    cluster = db.get(KubeCluster, cluster_id)
+    if not cluster:
+        raise HTTPException(status_code=404, detail="集群不存在")
+    try:
+        return delete_pod(cluster, namespace, pod_name)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -211,6 +265,24 @@ def kube_deployment_restart(name: str, cluster_id: int, namespace: str, db: Sess
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@router.post("/k8s/workloads/{name}/restart")
+def kube_workload_restart(
+    name: str,
+    payload: WorkloadRestartRequest,
+    cluster_id: int,
+    namespace: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(current_user),
+):
+    cluster = db.get(KubeCluster, cluster_id)
+    if not cluster:
+        raise HTTPException(status_code=404, detail="集群不存在")
+    try:
+        return restart_workload(cluster, namespace, name, payload.kind)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
 @router.post("/k8s/deployments/{name}/scale")
 def kube_deployment_scale(
     name: str,
@@ -225,5 +297,23 @@ def kube_deployment_scale(
         raise HTTPException(status_code=404, detail="集群不存在")
     try:
         return scale_deployment(cluster, namespace, name, payload.replicas)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/k8s/workloads/{name}/scale")
+def kube_workload_scale(
+    name: str,
+    payload: WorkloadScaleRequest,
+    cluster_id: int,
+    namespace: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(current_user),
+):
+    cluster = db.get(KubeCluster, cluster_id)
+    if not cluster:
+        raise HTTPException(status_code=404, detail="集群不存在")
+    try:
+        return scale_workload(cluster, namespace, name, payload.replicas, payload.kind)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

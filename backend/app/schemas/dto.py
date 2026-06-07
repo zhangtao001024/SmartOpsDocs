@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LoginRequest(BaseModel):
@@ -56,6 +56,20 @@ class ServerTestSchema(BaseModel):
 class ServerCommandRequest(BaseModel):
     command: str
     timeout: int = 30
+
+
+class ServerFileReadRequest(BaseModel):
+    path: str
+    max_bytes: int = 1048576
+
+
+class ServerFileWriteRequest(BaseModel):
+    path: str
+    content: str
+
+
+class ServerPathRequest(BaseModel):
+    path: str
 
 
 class ServerOut(BaseModel):
@@ -126,3 +140,20 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     references: list[dict]
+
+
+class AgentRequest(BaseModel):
+    goal: str
+    project: str = "default"
+    session_id: str = "default"
+    tools: list[str] = Field(default_factory=list)
+    dry_run: bool = True
+    context: dict = Field(default_factory=dict)
+
+
+class AgentResponse(BaseModel):
+    answer: str
+    references: list[dict]
+    tool_calls: list[dict]
+    plan: list[str]
+    mode: str = "openclaw-style"

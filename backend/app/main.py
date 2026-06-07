@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import router
+from app.api.routers.system import collect_health_status
 from app.core.config import get_settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
@@ -47,7 +48,11 @@ def startup() -> None:
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    db = SessionLocal()
+    try:
+        return collect_health_status(db)
+    finally:
+        db.close()
 
 
 app.include_router(router)

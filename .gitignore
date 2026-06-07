@@ -15,6 +15,7 @@ dist/
 .idea/
 
 # Data
+data/
 backend/data/
 backend/.env
 .env

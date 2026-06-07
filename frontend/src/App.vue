@@ -1,4 +1,5 @@
 <template>
+  <a class="skip-link" href="#main-content">跳到主内容</a>
   <router-view v-slot="{ Component }">
     <transition name="page-fade" mode="out-in">
       <component :is="Component" />

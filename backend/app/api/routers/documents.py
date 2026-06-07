@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user
@@ -120,25 +120,71 @@ def pull_url_to_knowledge(
 
 
 @router.get("/documents")
-def documents(project: str | None = None, db: Session = Depends(get_db), _: User = Depends(current_user)):
+def documents(
+    project: str | None = None,
+    q: str | None = Query(default=None, description="按标题、项目、状态搜索"),
+    status: str | None = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    _: User = Depends(current_user),
+):
     query = db.query(Document)
     if project:
         query = query.filter(Document.project == project)
-    return query.order_by(Document.id.desc()).all()
+    if status:
+        query = query.filter(Document.status == status)
+    if q:
+        keyword = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                Document.title.ilike(keyword),
+                Document.project.ilike(keyword),
+                Document.status.ilike(keyword),
+            )
+        )
+    query = query.order_by(Document.id.desc()).offset(offset)
+    if limit:
+        query = query.limit(limit)
+    return query.all()
 
 
 @router.get("/knowledge/tree")
-def knowledge_tree(project: str | None = None, db: Session = Depends(get_db), _: User = Depends(current_user)):
+def knowledge_tree(
+    project: str | None = None,
+    q: str | None = Query(default=None, description="按标题、项目、状态搜索"),
+    status: str | None = None,
+    offset: int = Query(default=0, ge=0),
+    limit: int | None = Query(default=None, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    _: User = Depends(current_user),
+):
     query = db.query(Document)
     if project:
         query = query.filter(Document.project == project)
-    documents = query.order_by(Document.project.asc(), Document.title.asc()).all()
+    if status:
+        query = query.filter(Document.status == status)
+    if q:
+        keyword = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                Document.title.ilike(keyword),
+                Document.project.ilike(keyword),
+                Document.status.ilike(keyword),
+            )
+        )
+    documents = query.order_by(Document.project.asc(), Document.title.asc()).offset(offset)
+    if limit:
+        documents = documents.limit(limit)
+    documents = documents.all()
+    document_ids = [doc.id for doc in documents]
     chunk_counts = {
         document_id: count
         for document_id, count in db.query(DocumentChunk.document_id, func.count(DocumentChunk.id))
+        .filter(DocumentChunk.document_id.in_(document_ids))
         .group_by(DocumentChunk.document_id)
         .all()
-    }
+    } if document_ids else {}
     return [
         {
             "id": doc.id,

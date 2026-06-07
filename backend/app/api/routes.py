@@ -11,9 +11,11 @@ from app.api.routers.k8s import router as k8s_router  # noqa: E402
 from app.api.routers.documents import router as documents_router  # noqa: E402
 from app.api.routers.ai import router as ai_router  # noqa: E402
 from app.api.routers.settings import router as settings_router  # noqa: E402
+from app.api.routers.system import router as system_router  # noqa: E402
 
 router.include_router(auth_router)
 router.include_router(settings_router)
+router.include_router(system_router)
 router.include_router(servers_router)
 router.include_router(docker_router)
 router.include_router(k8s_router)

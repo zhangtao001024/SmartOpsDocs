@@ -1,45 +1,82 @@
 <template>
-  <div class="login-page">
-    <div class="login-panel">
-      <div class="login-brand">
+  <main class="login-page">
+    <section class="login-copy" aria-label="SmartOpsDocs">
+      <div class="brand-lockup">
         <div class="brand-mark">S</div>
         <div>
-          <h1>SmartOpsDocs</h1>
-          <p>Ops Knowledge Workspace</p>
+          <div class="brand-name">SmartOpsDocs</div>
+          <div class="brand-sub">Ops Knowledge Workspace</div>
         </div>
       </div>
-      <el-form :model="form" @submit.prevent="login">
+      <p class="eyebrow">Local ops workspace</p>
+      <h1>把运维资产、知识库和 AI 问答放进同一个工作台。</h1>
+      <p class="intro">面向本地部署场景，减少分散入口，让服务器、容器、K8s 与文档检索保持在一条操作链路里。</p>
+      <div class="signal-grid">
+        <div>
+          <span>Assets</span>
+          <strong>SSH / Docker / K8s</strong>
+        </div>
+        <div>
+          <span>Knowledge</span>
+          <strong>Docs + RAG</strong>
+        </div>
+        <div>
+          <span>Agent</span>
+          <strong>Dry-run first</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-panel" aria-label="登录">
+      <div class="panel-header">
+        <p>登录工作台</p>
+        <h2>继续进入本地环境</h2>
+        <div class="login-status">
+          <span></span>
+          API proxy :8000
+        </div>
+      </div>
+      <el-form :model="form" @submit.prevent="login" label-position="top">
         <el-form-item>
-          <el-input v-model="form.username" prefix-icon="User" placeholder="用户名" />
+          <el-input v-model="form.username" prefix-icon="User" placeholder="用户名" autocomplete="username" />
         </el-form-item>
         <el-form-item>
-          <el-input v-model="form.password" prefix-icon="Lock" placeholder="密码" type="password" show-password />
+          <el-input
+            v-model="form.password"
+            prefix-icon="Lock"
+            placeholder="密码"
+            type="password"
+            autocomplete="current-password"
+            show-password
+          />
         </el-form-item>
-        <el-button type="primary" :loading="loading" @click="login">登录</el-button>
+        <el-button type="primary" :loading="loading" :disabled="!canSubmit" @click="login">登录</el-button>
       </el-form>
       <p class="muted">默认账号：admin / admin123</p>
-    </div>
-  </div>
+    </section>
+  </main>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import client from '../api/client'
+import client, { getApiErrorMessage } from '../api/client'
 
 const router = useRouter()
 const loading = ref(false)
 const form = reactive({ username: 'admin', password: 'admin123' })
+const canSubmit = computed(() => Boolean(form.username.trim() && form.password.trim()))
 
 async function login() {
+  if (!canSubmit.value || loading.value) return
   loading.value = true
   try {
     const { data } = await client.post('/api/auth/login', form)
     localStorage.setItem('smartopsdocs_token', data.access_token)
     router.push('/servers')
   } catch (error) {
-    ElMessage.error(error.response?.data?.detail || '登录失败')
+    ElMessage.error(getApiErrorMessage(error, '登录失败'))
   } finally {
     loading.value = false
   }
@@ -48,55 +85,238 @@ async function login() {
 
 <style scoped>
 .login-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
-  place-items: center;
-  background: var(--app-bg);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
+  align-items: center;
+  gap: clamp(44px, 7vw, 108px);
+  padding: clamp(28px, 6vw, 72px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 360px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.11), transparent 42%, rgba(16, 24, 32, 0.055)),
+    linear-gradient(rgba(16, 24, 32, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 24, 32, 0.028) 1px, transparent 1px),
+    var(--app-bg);
+  background-size: auto, auto, 30px 30px, 30px 30px, auto;
   transition: background-color 0.3s;
 }
 
-.login-panel {
-  width: min(380px, calc(100vw - 32px));
-  padding: 30px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-md);
-  background: var(--app-surface);
-  box-shadow: var(--app-shadow-lg);
-  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+.login-copy {
+  max-width: 760px;
 }
 
-.login-brand {
+.brand-lockup {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: clamp(44px, 8vw, 96px);
 }
 
 .brand-mark {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--app-radius-md);
   color: #fff;
-  background: var(--app-primary);
-  font-weight: 800;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 40%),
+    var(--app-primary);
+  box-shadow: 0 14px 32px rgba(15, 118, 110, 0.22);
+  font-weight: 820;
   place-items: center;
 }
 
-h1 {
-  margin: 0;
-  font-size: 24px;
-  line-height: 1.2;
+.brand-name {
   color: var(--app-text-heading);
+  font-size: 18px;
+  font-weight: 820;
+  line-height: 1.15;
 }
 
-.login-brand p {
-  margin: 4px 0 0;
+.brand-sub {
+  margin-top: 3px;
   color: var(--app-muted);
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.eyebrow {
+  margin: 0 0 14px;
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 12.5ch;
+  margin: 0;
+  color: var(--app-text-heading);
+  font-size: clamp(56px, 6.4vw, 86px);
+  font-weight: 820;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+
+.intro {
+  max-width: 58ch;
+  margin: 22px 0 0;
+  color: var(--app-muted);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 190px));
+  gap: 12px;
+  margin-top: 38px;
+}
+
+.signal-grid div {
+  min-height: 92px;
+  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.64), transparent),
+    rgba(251, 252, 253, 0.78);
+  box-shadow: var(--app-shadow);
+}
+
+:global(html.dark) .signal-grid div {
+  background: rgba(24, 35, 40, 0.72);
+}
+
+.signal-grid span {
+  display: block;
+  color: var(--app-muted);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.signal-grid strong {
+  display: block;
+  margin-top: 12px;
+  color: var(--app-text-heading);
+  font-size: 15px;
+  font-weight: 760;
+}
+
+.login-panel {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  padding: 32px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0)),
+    var(--app-surface);
+  box-shadow: var(--app-shadow-lg);
+  transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.login-panel::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--app-primary), var(--app-primary-border), transparent);
+  content: '';
+}
+
+:global(html.dark) .login-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+    var(--app-surface);
+}
+
+.panel-header {
+  margin-bottom: 24px;
+}
+
+.panel-header p {
+  margin: 0 0 8px;
+  color: var(--app-primary);
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.panel-header h2 {
+  margin: 0;
+  color: var(--app-text-heading);
+  font-size: 26px;
+  line-height: 1.25;
+}
+
+.login-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 7px 10px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius);
+  color: var(--app-muted);
+  background: var(--app-surface-soft);
+  font-family: var(--app-font-mono);
+  font-size: 12px;
+}
+
+.login-status span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--app-success);
+  box-shadow: 0 0 0 4px var(--app-success-soft);
+}
+
+.el-form {
+  display: grid;
+  gap: 6px;
 }
 
 .el-button {
   width: 100%;
+  min-height: 44px;
+}
+
+.muted {
+  margin: 16px 0 0;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .login-page {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding: 24px;
+  }
+
+  .brand-lockup {
+    margin-bottom: 42px;
+  }
+
+  h1 {
+    max-width: 14ch;
+  }
+
+  .login-panel {
+    max-width: 460px;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-page {
+    padding: 18px;
+  }
+
+  .signal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-panel {
+    padding: 22px;
+  }
 }
 </style>

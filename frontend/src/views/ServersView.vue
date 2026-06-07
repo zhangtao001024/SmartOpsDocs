@@ -1,33 +1,61 @@
 <template>
-  <div>
-    <div class="toolbar">
-      <h2 class="page-title">服务器资产</h2>
-      <div style="display: flex; gap: 8px; align-items: center">
-        <el-input v-model="search" placeholder="搜索 IP / 主机名 / 标签" prefix-icon="Search" clearable style="width: 240px" />
-        <el-select v-model="filterEnv" placeholder="环境" clearable style="width: 110px">
+  <div class="console-page">
+    <section class="console-hero">
+      <div class="page-heading">
+        <p class="page-kicker">Asset inventory</p>
+        <h2 class="page-title">服务器资产</h2>
+        <p class="page-subtitle">维护 SSH 连接信息、项目环境标签和远程操作入口。</p>
+        <div class="console-status-strip">
+          <span><strong>{{ servers.length }}</strong> 总资产</span>
+          <span><strong>{{ onlineCount }}</strong> 在线</span>
+          <span><strong>{{ prodCount }}</strong> 生产环境</span>
+          <span><strong>{{ selectedRows.length }}</strong> 已选择</span>
+        </div>
+      </div>
+      <div class="toolbar-actions server-actions">
+        <el-input v-model="search" class="server-search" placeholder="搜索 IP / 主机名 / 标签" prefix-icon="Search" clearable />
+        <el-select v-model="filterEnv" class="env-filter" placeholder="环境" clearable>
           <el-option label="开发" value="dev" />
           <el-option label="测试" value="test" />
           <el-option label="生产" value="prod" />
         </el-select>
-        <el-select v-model="filterProject" placeholder="项目" clearable style="width: 130px">
+        <el-select v-model="filterProject" class="project-filter" placeholder="项目" clearable>
           <el-option v-for="p in projects" :key="p" :label="p" :value="p" />
         </el-select>
         <el-button icon="Refresh" @click="load">刷新</el-button>
         <el-button icon="Connection" :disabled="selectedRows.length === 0" :loading="batchTesting" @click="batchTest">批量测试</el-button>
         <el-button type="primary" icon="Plus" @click="openCreate">新增服务器</el-button>
       </div>
-    </div>
-    <div class="panel">
+    </section>
+    <div class="panel table-panel">
+      <div v-if="servers.length > 0" class="metric-strip">
+        <div>
+          <span>当前列表</span>
+          <strong>{{ filteredServers.length }}</strong>
+        </div>
+        <div>
+          <span>在线</span>
+          <strong>{{ onlineCount }}</strong>
+        </div>
+        <div>
+          <span>生产环境</span>
+          <strong>{{ prodCount }}</strong>
+        </div>
+        <div>
+          <span>已选择</span>
+          <strong>{{ selectedRows.length }}</strong>
+        </div>
+      </div>
       <SkeletonTable v-if="loading && servers.length === 0" :rows="6" :cols="7" />
       <el-empty v-else-if="!loading && servers.length === 0" description="暂无服务器资产，点击「新增服务器」开始添加" />
       <el-empty v-else-if="!loading && filteredServers.length === 0" description="没有匹配的服务器" />
       <el-table v-else :data="filteredServers" v-loading="loading" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="44" />
-        <el-table-column prop="ip" label="IP" width="150" />
-        <el-table-column prop="hostname" label="主机名" />
+        <el-table-column prop="ip" label="IP" width="150" show-overflow-tooltip />
+        <el-table-column prop="hostname" label="主机名" min-width="150" show-overflow-tooltip />
         <el-table-column prop="ssh_port" label="SSH" width="80" />
         <el-table-column prop="ssh_username" label="用户" width="110" />
-        <el-table-column prop="project" label="项目" width="120" />
+        <el-table-column prop="project" label="项目" width="120" show-overflow-tooltip />
         <el-table-column prop="environment" label="环境" width="100">
           <template #default="{ row }">
             <el-tag :type="envTagType(row.environment)" size="small">{{ envLabel(row.environment) }}</el-tag>
@@ -38,15 +66,25 @@
             <el-tag :type="statusTagType(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="tags" label="标签" />
-        <el-table-column label="操作" width="400" fixed="right">
+        <el-table-column prop="tags" label="标签" min-width="160" show-overflow-tooltip />
+        <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" :loading="testing === row.id" @click="test(row)">测试</el-button>
-            <el-button size="small" @click="openOverview(row)">概览</el-button>
-            <el-button size="small" @click="openCommand(row)">命令</el-button>
-            <el-button size="small" @click="openEdit(row)">编辑</el-button>
-            <el-button size="small" icon="Monitor" @click="openTerminal(row)">终端</el-button>
-            <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
+            <div class="row-actions">
+              <el-button size="small" :loading="testing === row.id" @click="test(row)">测试</el-button>
+              <el-button size="small" @click="openOverview(row)">概览</el-button>
+              <el-button size="small" icon="Monitor" @click="openTerminal(row)">终端</el-button>
+              <el-dropdown @command="(command) => handleServerMore(row, command)">
+                <el-button size="small">更多</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="command">执行命令</el-dropdown-item>
+                    <el-dropdown-item command="files">远程文件</el-dropdown-item>
+                    <el-dropdown-item command="edit">编辑资产</el-dropdown-item>
+                    <el-dropdown-item divided command="delete">删除资产</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -108,11 +146,11 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="terminalVisible" :title="'SSH 终端 — ' + (terminalServer?.ip || '')" width="860px" :close-on-click-modal="false" @closed="closeTerminal">
+    <el-dialog v-model="terminalVisible" :title="'SSH 终端 - ' + (terminalServer?.ip || '')" width="860px" :close-on-click-modal="false" @closed="closeTerminal">
       <div ref="terminalBox" class="terminal-box"></div>
     </el-dialog>
 
-    <el-dialog v-model="overviewVisible" :title="'服务器概览 — ' + (activeServer?.ip || '')" width="920px">
+    <el-dialog v-model="overviewVisible" :title="'服务器概览 - ' + (activeServer?.ip || '')" width="920px">
       <div v-loading="overviewLoading" class="overview-grid">
         <div v-for="section in overviewSections" :key="section.key" class="overview-section">
           <h4>{{ section.label }}</h4>
@@ -121,7 +159,7 @@
       </div>
     </el-dialog>
 
-    <el-dialog v-model="commandVisible" :title="'执行命令 — ' + (activeServer?.ip || '')" width="920px">
+    <el-dialog v-model="commandVisible" :title="'执行命令 - ' + (activeServer?.ip || '')" width="920px">
       <el-form label-width="80px">
         <el-form-item label="命令">
           <el-input v-model="commandForm.command" type="textarea" :rows="3" placeholder="例如：systemctl status nginx --no-pager" />
@@ -130,21 +168,66 @@
           <el-input-number v-model="commandForm.timeout" :min="1" :max="120" />
         </el-form-item>
       </el-form>
+      <div class="quick-commands">
+        <el-button v-for="item in quickCommands" :key="item.command" size="small" @click="commandForm.command = item.command">
+          {{ item.label }}
+        </el-button>
+      </div>
       <div class="command-actions">
         <el-button type="primary" icon="CaretRight" :loading="commandLoading" :disabled="!commandForm.command.trim()" @click="runServerCommand">执行</el-button>
         <el-tag v-if="commandResult" :type="commandResult.exit_code === 0 ? 'success' : 'danger'">exit {{ commandResult.exit_code }}</el-tag>
       </div>
       <pre class="log-box command-output">{{ commandOutput }}</pre>
     </el-dialog>
+
+    <el-drawer v-model="fileDrawerVisible" :title="'远程文件 - ' + (activeServer?.ip || '')" size="68%" @closed="resetFileManager">
+      <div class="file-toolbar">
+        <el-input v-model="filePath" placeholder="远程路径" @keyup.enter="loadRemoteFiles" />
+        <el-button icon="Back" @click="goParent">上级</el-button>
+        <el-button icon="FolderAdd" @click="createRemoteDirectory">新建目录</el-button>
+        <el-button icon="Refresh" @click="loadRemoteFiles">刷新</el-button>
+      </div>
+      <el-table :data="remoteFiles" v-loading="fileLoading" height="calc(100vh - 230px)">
+        <el-table-column label="名称">
+          <template #default="{ row }">
+            <el-button text :icon="row.type === 'directory' ? 'FolderOpened' : 'Document'" @click="openRemoteItem(row)">
+              {{ row.name }}
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column prop="type" label="类型" width="110" />
+        <el-table-column label="大小" width="120">
+          <template #default="{ row }">{{ row.type === 'directory' ? '-' : formatBytes(row.size) }}</template>
+        </el-table-column>
+        <el-table-column prop="permissions" label="权限" width="130" />
+        <el-table-column label="修改时间" width="180">
+          <template #default="{ row }">{{ formatTime(row.mtime) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button v-if="row.type !== 'directory'" size="small" @click="readRemoteFile(row)">编辑</el-button>
+            <el-button size="small" type="danger" text @click="deleteRemoteFile(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-drawer>
+
+    <el-dialog v-model="fileEditorVisible" :title="'编辑文件 - ' + editingRemoteFile" width="900px">
+      <el-input v-model="remoteFileContent" type="textarea" :rows="20" spellcheck="false" class="file-editor" />
+      <template #footer>
+        <el-button @click="fileEditorVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingFile" @click="saveRemoteFile">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import client from '../api/client'
+import client, { getApiErrorMessage } from '../api/client'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import '@xterm/xterm/css/xterm.css'
 
@@ -170,9 +253,18 @@ const commandVisible = ref(false)
 const commandLoading = ref(false)
 const commandResult = ref(null)
 const commandForm = reactive({ command: '', timeout: 30 })
+const fileDrawerVisible = ref(false)
+const fileLoading = ref(false)
+const filePath = ref('.')
+const remoteFiles = ref([])
+const fileEditorVisible = ref(false)
+const editingRemoteFile = ref('')
+const remoteFileContent = ref('')
+const savingFile = ref(false)
 let terminalInstance = null
 let terminalFit = null
 let ws = null
+let filterTimer = null
 
 const emptyForm = () => ({
   ip: '', hostname: '', ssh_port: 22, ssh_username: 'root',
@@ -195,6 +287,18 @@ const projects = computed(() => {
   return [...new Set(servers.value.map(function(s) { return s.project }).filter(Boolean))]
 })
 
+const onlineCount = computed(() => {
+  return servers.value.filter(function(server) {
+    return server.status === 'online' || server.status === 'running'
+  }).length
+})
+
+const prodCount = computed(() => {
+  return servers.value.filter(function(server) {
+    return server.environment === 'prod'
+  }).length
+})
+
 const overviewSections = [
   { key: 'hostname', label: '主机名' },
   { key: 'system', label: '系统' },
@@ -204,6 +308,15 @@ const overviewSections = [
   { key: 'disks', label: '磁盘' },
   { key: 'processes', label: '进程 Top' },
   { key: 'docker', label: 'Docker 容器' },
+]
+
+const quickCommands = [
+  { label: '系统信息', command: 'uname -a && uptime' },
+  { label: '磁盘占用', command: 'df -h -x tmpfs -x devtmpfs' },
+  { label: '内存占用', command: 'free -m' },
+  { label: 'CPU Top', command: 'ps -eo pid,comm,%cpu,%mem --sort=-%cpu | head -n 15' },
+  { label: '网络端口', command: 'ss -tunlp | head -n 30' },
+  { label: 'Docker 容器', command: 'docker ps -a --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"' },
 ]
 
 const commandOutput = computed(() => {
@@ -251,10 +364,23 @@ function assignForm(data) {
 async function load() {
   loading.value = true
   try {
-    servers.value = (await client.get('/api/servers')).data
+    servers.value = (await client.get('/api/servers', {
+      params: {
+        q: search.value.trim() || undefined,
+        environment: filterEnv.value || undefined,
+        project: filterProject.value || undefined,
+      }
+    })).data
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '获取服务器列表失败'))
   } finally {
     loading.value = false
   }
+}
+
+function queueLoad() {
+  if (filterTimer) window.clearTimeout(filterTimer)
+  filterTimer = window.setTimeout(load, 260)
 }
 
 function openCreate() {
@@ -301,7 +427,7 @@ async function test(row, quiet) {
       row.status = 'offline'
     }
   } catch (e) {
-    if (!quiet) ElMessage.error(e.response?.data?.detail || e.message || '请求失败')
+    if (!quiet) ElMessage.error(getApiErrorMessage(e, '请求失败'))
   } finally {
     testing.value = null
   }
@@ -332,7 +458,7 @@ async function remove(row) {
     load()
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') {
-      ElMessage.error(error.response?.data?.detail || '删除失败')
+      ElMessage.error(getApiErrorMessage(error, '删除失败'))
     }
   }
 }
@@ -351,7 +477,7 @@ async function openOverview(row) {
   try {
     overview.value = (await client.get('/api/servers/' + row.id + '/overview')).data
   } catch (error) {
-    ElMessage.error(error.response?.data?.detail || '获取服务器概览失败')
+    ElMessage.error(getApiErrorMessage(error, '获取服务器概览失败'))
   } finally {
     overviewLoading.value = false
   }
@@ -370,10 +496,146 @@ async function runServerCommand() {
   try {
     commandResult.value = (await client.post('/api/servers/' + activeServer.value.id + '/command', commandForm)).data
   } catch (error) {
-    ElMessage.error(error.response?.data?.detail || '命令执行失败')
+    ElMessage.error(getApiErrorMessage(error, '命令执行失败'))
   } finally {
     commandLoading.value = false
   }
+}
+
+function openFiles(row) {
+  activeServer.value = row
+  filePath.value = '.'
+  remoteFiles.value = []
+  fileDrawerVisible.value = true
+  loadRemoteFiles()
+}
+
+function resetFileManager() {
+  remoteFiles.value = []
+  filePath.value = '.'
+  editingRemoteFile.value = ''
+  remoteFileContent.value = ''
+}
+
+async function loadRemoteFiles() {
+  if (!activeServer.value) return
+  fileLoading.value = true
+  try {
+    const data = (await client.get('/api/servers/' + activeServer.value.id + '/files', {
+      params: { path: filePath.value || '.' }
+    })).data
+    filePath.value = data.path
+    remoteFiles.value = data.files || []
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '读取远程目录失败'))
+  } finally {
+    fileLoading.value = false
+  }
+}
+
+function openRemoteItem(row) {
+  if (row.type === 'directory') {
+    filePath.value = row.path
+    loadRemoteFiles()
+  } else {
+    readRemoteFile(row)
+  }
+}
+
+async function readRemoteFile(row) {
+  if (!activeServer.value) return
+  try {
+    const data = (await client.post('/api/servers/' + activeServer.value.id + '/files/read', {
+      path: row.path,
+      max_bytes: 1024 * 1024,
+    })).data
+    editingRemoteFile.value = data.path
+    remoteFileContent.value = data.content || ''
+    fileEditorVisible.value = true
+    if (data.truncated) ElMessage.warning('文件较大，仅加载前 1MB 内容')
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '读取文件失败'))
+  }
+}
+
+async function saveRemoteFile() {
+  if (!activeServer.value || !editingRemoteFile.value) return
+  savingFile.value = true
+  try {
+    await client.put('/api/servers/' + activeServer.value.id + '/files', {
+      path: editingRemoteFile.value,
+      content: remoteFileContent.value,
+    })
+    ElMessage.success('文件已保存')
+    fileEditorVisible.value = false
+    await loadRemoteFiles()
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '保存文件失败'))
+  } finally {
+    savingFile.value = false
+  }
+}
+
+async function createRemoteDirectory() {
+  if (!activeServer.value) return
+  try {
+    const result = await ElMessageBox.prompt('输入新目录名称或完整路径', '新建远程目录', {
+      inputValue: '',
+      inputPattern: /\S+/,
+      inputErrorMessage: '目录不能为空',
+      confirmButtonText: '创建',
+      cancelButtonText: '取消',
+    })
+    const name = result.value.trim()
+    const path = name.startsWith('/') ? name : filePath.value.replace(/\/$/, '') + '/' + name
+    await client.post('/api/servers/' + activeServer.value.id + '/directories', { path })
+    ElMessage.success('目录已创建')
+    await loadRemoteFiles()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(getApiErrorMessage(error, '创建目录失败'))
+    }
+  }
+}
+
+async function deleteRemoteFile(row) {
+  if (!activeServer.value) return
+  try {
+    await ElMessageBox.confirm('确定删除 ' + row.path + '？目录必须为空。', '确认删除', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+    await client.delete('/api/servers/' + activeServer.value.id + '/files', { params: { path: row.path } })
+    ElMessage.success('已删除')
+    await loadRemoteFiles()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(getApiErrorMessage(error, '删除失败'))
+    }
+  }
+}
+
+function goParent() {
+  const value = filePath.value || '.'
+  if (value === '/' || value === '.') return
+  const trimmed = value.replace(/\/$/, '')
+  const index = trimmed.lastIndexOf('/')
+  filePath.value = index <= 0 ? '/' : trimmed.slice(0, index)
+  loadRemoteFiles()
+}
+
+function formatBytes(value) {
+  const size = Number(value || 0)
+  if (size < 1024) return size + ' B'
+  if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB'
+  if (size < 1024 * 1024 * 1024) return (size / 1024 / 1024).toFixed(1) + ' MB'
+  return (size / 1024 / 1024 / 1024).toFixed(1) + ' GB'
+}
+
+function formatTime(value) {
+  if (!value) return '-'
+  return new Date(Number(value) * 1000).toLocaleString()
 }
 
 function openTerminal(row) {
@@ -441,9 +703,29 @@ function closeTerminal() {
 }
 
 onMounted(load)
+
+watch([search, filterEnv, filterProject], queueLoad)
+
+onBeforeUnmount(() => {
+  if (filterTimer) window.clearTimeout(filterTimer)
+  closeTerminal()
+})
 </script>
 
 <style scoped>
+.server-actions {
+  max-width: 760px;
+}
+
+.server-search {
+  width: 260px;
+}
+
+.env-filter,
+.project-filter {
+  width: 132px;
+}
+
 .terminal-box {
   height: 520px;
   background: var(--app-terminal-bg);
@@ -467,6 +749,25 @@ onMounted(load)
   gap: 10px;
   align-items: center;
   margin-bottom: 12px;
+}
+
+.quick-commands,
+.file-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.file-toolbar .el-input {
+  flex: 1 1 280px;
+}
+
+.file-editor :deep(.el-textarea__inner) {
+  font-family: var(--app-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .command-output {
