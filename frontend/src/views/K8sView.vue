@@ -20,7 +20,7 @@
       </div>
     </header>
 
-    <section class="panel k8s-workbench">
+    <section class="panel k8s-workbench" :class="{ 'has-detail': selectedResource }">
       <aside class="k8s-sidebar" aria-label="Kubernetes navigation">
         <div class="cluster-card">
           <span class="eyebrow">当前集群</span>
@@ -978,12 +978,16 @@ onBeforeUnmount(() => {
 
 .k8s-workbench {
   display: grid;
-  grid-template-columns: 264px minmax(0, 1fr) 312px;
-  gap: 16px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 12px;
   min-height: 0;
   height: 100%;
-  padding: 16px;
+  padding: 12px;
   overflow: hidden;
+}
+
+.k8s-workbench.has-detail {
+  grid-template-columns: 240px minmax(0, 1fr) 300px;
 }
 
 .k8s-sidebar,
@@ -1156,7 +1160,7 @@ onBeforeUnmount(() => {
 }
 
 .resource-search {
-  width: min(280px, 28vw);
+  width: min(260px, 24vw);
 }
 
 .status-filter {
@@ -1279,7 +1283,7 @@ onBeforeUnmount(() => {
 }
 
 .resource-detail.empty {
-  place-items: center;
+  display: none;
 }
 
 .detail-heading {
@@ -1378,5 +1382,38 @@ onBeforeUnmount(() => {
 
 :deep(.el-table__row.is-selected-row > td.el-table__cell) {
   background: color-mix(in srgb, var(--app-primary-softer) 82%, var(--app-accent-soft));
+}
+
+@media (max-width: 1500px) {
+  .k8s-workbench {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .k8s-workbench.has-detail {
+    grid-template-columns: 220px minmax(0, 1fr) 260px;
+  }
+
+  .k8s-sidebar,
+  .resource-detail {
+    padding: 8px;
+  }
+
+  .ops-bar {
+    align-items: flex-start;
+    flex-direction: row;
+    gap: 12px;
+  }
+
+  .ops-actions {
+    justify-content: flex-start;
+  }
+
+  .resource-search {
+    width: 240px;
+  }
+
+  .overview-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 </style>

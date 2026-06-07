@@ -745,14 +745,18 @@ onBeforeUnmount(() => {
 }
 
 .toolbar-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 140px minmax(220px, 1fr) 126px auto auto;
   gap: 8px;
   align-items: center;
+  justify-content: end;
+  min-width: 0;
+  max-width: 760px;
   flex-shrink: 0;
 }
 
 .toolbar-actions .el-input {
-  width: 180px;
+  width: 100%;
 }
 
 .toolbar-actions .status-filter {
@@ -761,16 +765,16 @@ onBeforeUnmount(() => {
 
 .knowledge-shell {
   display: grid;
-  grid-template-columns: 288px minmax(0, 1fr) 312px;
+  grid-template-columns: 260px minmax(0, 1fr) 240px;
   align-items: stretch;
-  gap: 16px;
+  gap: 12px;
   min-height: 0;
   height: 100%;
   transition: grid-template-columns 0.24s ease;
 }
 
 .knowledge-shell.toc-collapsed {
-  grid-template-columns: 288px minmax(0, 1fr) 56px;
+  grid-template-columns: 260px minmax(0, 1fr) 48px;
 }
 
 .kb-nav,
@@ -808,7 +812,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px;
+  padding: 12px;
   border-bottom: 1px solid var(--app-border-soft);
 }
 
@@ -832,7 +836,7 @@ onBeforeUnmount(() => {
 }
 
 .upload-box {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--app-border-soft);
 }
 
@@ -882,7 +886,7 @@ onBeforeUnmount(() => {
 
 .doc-list {
   overflow: auto;
-  padding: 12px;
+  padding: 10px;
 }
 
 .doc-empty {
@@ -906,7 +910,7 @@ onBeforeUnmount(() => {
   align-items: start;
   position: relative;
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid transparent;
   border-radius: var(--app-radius-md);
   color: var(--app-text-soft);
@@ -1017,7 +1021,7 @@ onBeforeUnmount(() => {
 }
 
 .reader-header {
-  padding: 24px 56px 16px;
+  padding: 18px 32px 14px;
   border-bottom: 1px solid var(--app-border-soft);
   background:
     linear-gradient(90deg, rgba(12, 118, 111, 0.06), transparent 48%, rgba(168, 85, 30, 0.025)),
@@ -1025,11 +1029,11 @@ onBeforeUnmount(() => {
 }
 
 .reader-header h1 {
-  max-width: 34ch;
+  max-width: 42ch;
   margin: 0;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 34px;
+  font-size: 30px;
   font-weight: 860;
   line-height: 1.14;
   overflow-wrap: anywhere;
@@ -1048,13 +1052,13 @@ onBeforeUnmount(() => {
 }
 
 .reader-alert {
-  margin: 16px 56px 0;
+  margin: 14px 32px 0;
 }
 
 .article-body {
-  width: min(100%, 1040px);
+  width: 100%;
   margin: 0 auto;
-  padding: 32px 56px 72px;
+  padding: 26px 32px 64px;
   color: var(--app-text);
   font-size: 16px;
   line-height: 1.9;
@@ -1193,6 +1197,30 @@ onBeforeUnmount(() => {
   line-height: 1.55;
 }
 
+@media (max-width: 1500px) {
+  .toolbar-actions {
+    grid-template-columns: 112px minmax(180px, 1fr) 108px auto auto;
+    max-width: 640px;
+  }
+
+  .knowledge-shell {
+    grid-template-columns: 240px minmax(0, 1fr) 220px;
+    gap: 10px;
+  }
+
+  .knowledge-shell.toc-collapsed {
+    grid-template-columns: 240px minmax(0, 1fr) 48px;
+  }
+
+  .reader-header {
+    padding-inline: 24px;
+  }
+
+  .article-body {
+    padding-inline: 24px;
+  }
+}
+
 .article-body :deep(th),
 .article-body :deep(td) {
   border: 1px solid var(--app-border-soft);
@@ -1242,7 +1270,7 @@ onBeforeUnmount(() => {
   height: 100%;
   min-height: 0;
   overflow: auto;
-  padding: 12px;
+  padding: 10px;
 }
 
 .aside-collapse {
@@ -1286,7 +1314,7 @@ onBeforeUnmount(() => {
 }
 
 .aside-section {
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background: color-mix(in srgb, var(--app-surface-raised) 66%, transparent);
@@ -1313,7 +1341,7 @@ onBeforeUnmount(() => {
 .document-tools .reader-actions :deep(.el-button) {
   width: 100%;
   justify-content: flex-start;
-  min-height: 36px;
+  min-height: 34px;
   margin-left: 0;
   padding: 0 12px;
 }

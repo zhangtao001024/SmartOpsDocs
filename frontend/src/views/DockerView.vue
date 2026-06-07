@@ -88,15 +88,13 @@
               </template>
             </el-table-column>
             <el-table-column prop="ports" label="端口" />
-            <el-table-column label="操作" width="430" fixed="right">
+            <el-table-column label="操作" width="318" fixed="right">
               <template #default="{ row }">
                 <div class="row-actions docker-row-actions">
                   <el-button size="small" :loading="acting === row.id + '-start'" @click="action(row, 'start')">启动</el-button>
                   <el-button size="small" :loading="acting === row.id + '-stop'" @click="action(row, 'stop')">停止</el-button>
                   <el-button size="small" type="warning" :loading="acting === row.id + '-restart'" @click="action(row, 'restart')">重启</el-button>
                   <el-button size="small" icon="Monitor" @click="openContainerShell(row)">Shell</el-button>
-                  <el-button size="small" icon="FolderOpened" @click="openContainerFiles(row)">文件</el-button>
-                  <el-button size="small" icon="Tickets" @click="openCompose(row)">Compose</el-button>
                   <el-popover
                     placement="bottom-end"
                     trigger="click"
@@ -109,6 +107,8 @@
                       <el-button size="small" icon="MoreFilled">更多</el-button>
                     </template>
                     <div class="docker-more-menu">
+                      <button type="button" @click="handleContainerMore(row, 'files')">文件</button>
+                      <button type="button" @click="handleContainerMore(row, 'compose')">Compose</button>
                       <button type="button" @click="handleContainerMore(row, 'logs')">日志</button>
                       <button type="button" @click="handleContainerMore(row, 'top')">Top</button>
                       <button type="button" @click="handleContainerMore(row, 'inspect')">Inspect</button>
@@ -596,7 +596,11 @@ async function inspectVolume(row) {
 
 function handleContainerMore(row, command) {
   activeContainerMoreId.value = null
-  if (command === 'logs') {
+  if (command === 'files') {
+    openContainerFiles(row)
+  } else if (command === 'compose') {
+    openCompose(row)
+  } else if (command === 'logs') {
     showLogs(row)
   } else if (command === 'top') {
     showTop(row)
@@ -972,12 +976,16 @@ onBeforeUnmount(disposeContainerShell)
 
 <style scoped>
 .docker-actions {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 128px repeat(3, auto);
+  align-items: center;
+  justify-content: end;
   min-width: 0;
   max-width: 760px;
 }
 
 .docker-server-select {
-  width: 300px;
+  width: 100%;
 }
 
 .docker-tail-input {
@@ -1015,6 +1023,10 @@ onBeforeUnmount(disposeContainerShell)
   min-height: 0;
   height: 100%;
   overflow: auto;
+}
+
+.docker-panel :deep(.el-tab-pane > .el-table) {
+  min-height: 0;
 }
 
 .container-shell-toolbar {
@@ -1073,10 +1085,6 @@ onBeforeUnmount(disposeContainerShell)
 
 .compose-toolbar,
 .compose-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
   margin: 16px 0;
 }
 
@@ -1086,35 +1094,6 @@ onBeforeUnmount(disposeContainerShell)
 
 :global(.docker-more-popper) {
   padding: 6px;
-}
-
-.docker-more-menu {
-  display: grid;
-  gap: 2px;
-}
-
-.docker-more-menu button {
-  width: 100%;
-  border: 0;
-  border-radius: var(--app-radius-sm);
-  padding: 8px 10px;
-  color: var(--app-text);
-  background: transparent;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  text-align: left;
-  cursor: pointer;
-}
-
-.docker-more-menu button:hover {
-  color: var(--app-primary);
-  background: var(--app-primary-softer);
-}
-
-.docker-more-menu button.danger:hover {
-  color: var(--app-danger);
-  background: var(--app-danger-soft);
 }
 
 .compose-editor :deep(.el-textarea__inner),

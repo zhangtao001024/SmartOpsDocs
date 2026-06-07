@@ -1,6 +1,6 @@
 <template>
   <el-container class="layout">
-    <el-aside width="264px" class="sidebar">
+    <el-aside width="232px" class="sidebar">
       <div class="brand">
         <div class="brand-mark">SD</div>
         <div>
@@ -28,21 +28,14 @@
           <small>{{ runtimeDetail }}</small>
         </div>
       </div>
+      <div class="sidebar-actions">
+        <el-button text :icon="theme === 'dark' ? 'Sunny' : 'Moon'" @click="toggleTheme">
+          {{ theme === 'dark' ? '亮色' : '暗色' }}
+        </el-button>
+        <el-button text icon="SwitchButton" @click="logout">退出</el-button>
+      </div>
     </el-aside>
     <el-container class="content-shell">
-      <el-header>
-        <div class="header-title">
-          <div>
-            <span>{{ currentTitle }}</span>
-            <small>{{ runtimeDetail }}</small>
-          </div>
-        </div>
-        <div class="header-actions">
-          <el-button text :icon="theme === 'dark' ? 'Sunny' : 'Moon'" @click="toggleTheme" :title="theme === 'dark' ? '切换亮色' : '切换暗色'" />
-          <el-tag size="small" :type="runtimeTagType" effect="plain" :title="runtimeIssueText || runtimeDetail">{{ runtimeTagText }}</el-tag>
-          <el-button text icon="SwitchButton" @click="logout">退出</el-button>
-        </div>
-      </el-header>
       <el-main id="main-content" class="main-content">
         <router-view />
       </el-main>
@@ -53,12 +46,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useRoute } from 'vue-router'
 import useTheme from '../composables/useTheme'
 import client from '../api/client'
 
 const router = useRouter()
-const route = useRoute()
 const { theme, toggleTheme } = useTheme()
 const runtimeStatus = ref('checking')
 const runtimeCounts = ref(null)
@@ -87,16 +78,6 @@ onBeforeUnmount(() => {
   if (statusTimer) window.clearInterval(statusTimer)
 })
 
-const titleMap = {
-  '/': '运维概览',
-  '/servers': '服务器资产',
-  '/docker': 'Docker 管理',
-  '/k8s': 'Kubernetes',
-  '/documents': '知识库',
-  '/chat': 'AI 助手',
-  '/settings': '模型设置',
-}
-const currentTitle = computed(() => titleMap[route.path] || 'SmartOpsDocs')
 const runtimeLabel = computed(() => {
   if (runtimeStatus.value === 'ok') return '后端正常'
   if (runtimeStatus.value === 'degraded') return '后端降级'
@@ -115,18 +96,6 @@ const runtimeIssueText = computed(() => {
   if (!issue) return ''
   const name = issue.name ? `${issue.scope || 'runtime'}:${issue.name}` : issue.scope || 'runtime'
   return `${name} ${issue.error || '异常'}`
-})
-const runtimeTagType = computed(() => {
-  if (runtimeStatus.value === 'ok') return 'success'
-  if (runtimeStatus.value === 'degraded') return 'warning'
-  if (runtimeStatus.value === 'offline') return 'danger'
-  return 'info'
-})
-const runtimeTagText = computed(() => {
-  if (runtimeStatus.value === 'ok') return '后端正常'
-  if (runtimeStatus.value === 'degraded') return '后端降级'
-  if (runtimeStatus.value === 'offline') return '后端离线'
-  return '检查中'
 })
 function logout() {
   localStorage.removeItem('smartopsdocs_token')
@@ -157,7 +126,7 @@ function logout() {
   transition: width 0.25s ease, background-color 0.3s;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   box-shadow: 10px 0 30px rgba(24, 45, 35, 0.055);
 }
 
@@ -211,17 +180,25 @@ function logout() {
 }
 
 .nav-scroll {
+  display: flex;
+  min-width: 0;
   min-height: 0;
   overflow: auto;
+  padding: 10px 0;
 }
 
 :deep(.el-menu) {
+  display: grid;
+  height: 100%;
+  align-content: space-evenly;
   border-right: 0;
-  padding: 10px 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
 }
 
 .nav-section-label {
-  margin: 8px 10px 4px;
+  margin: 0 20px;
   color: var(--app-muted-soft);
   font-size: 11px;
   font-weight: 760;
@@ -230,19 +207,21 @@ function logout() {
 }
 
 :deep(.el-menu-item) {
-  height: 36px;
-  margin-bottom: 4px;
-  border-radius: var(--app-radius);
+  width: 100%;
+  height: 42px;
+  margin-bottom: 0;
+  padding: 0 18px !important;
+  border-radius: 0;
   color: var(--app-text-soft);
-  line-height: 36px;
+  line-height: 42px;
   font-weight: 720;
   transition: background-color 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 :deep(.el-menu-item .el-icon) {
-  width: 24px;
-  height: 24px;
-  margin-right: 8px;
+  width: 28px;
+  height: 28px;
+  margin-right: 12px;
   border-radius: var(--app-radius-sm);
   color: var(--app-primary);
   background: color-mix(in srgb, var(--app-primary-softer) 72%, transparent);
@@ -251,8 +230,8 @@ function logout() {
 
 :deep(.el-menu-item:hover) {
   background: var(--app-sidebar-item-hover);
-  transform: translateX(2px);
-  box-shadow: inset 0 0 0 1px var(--app-border-soft);
+  transform: none;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--app-primary) 36%, transparent);
 }
 
 :deep(.el-menu-item:hover .el-icon) {
@@ -264,7 +243,7 @@ function logout() {
   color: var(--app-primary);
   background:
     linear-gradient(90deg, var(--app-primary-soft), var(--app-primary-softer) 74%, color-mix(in srgb, var(--app-accent-soft) 46%, transparent));
-  box-shadow: inset 3px 0 0 var(--app-primary), inset -1px 0 0 color-mix(in srgb, var(--app-accent) 18%, transparent), 0 1px 0 rgba(255, 255, 255, 0.58) inset;
+  box-shadow: inset 4px 0 0 var(--app-primary), inset 0 -1px 0 var(--app-border-soft), inset 0 1px 0 rgba(255, 255, 255, 0.58);
 }
 
 :deep(.el-menu-item.is-active .el-icon) {
@@ -278,7 +257,7 @@ function logout() {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin: 8px 12px 12px;
+  margin: 8px 12px;
   padding: 8px 12px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
@@ -286,6 +265,21 @@ function logout() {
     linear-gradient(180deg, rgba(255, 255, 255, 0.45), transparent),
     var(--app-surface-soft);
   box-shadow: var(--app-shadow-sm);
+}
+
+.sidebar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+.sidebar-actions :deep(.el-button) {
+  min-height: 34px;
+  justify-content: center;
+  margin-left: 0 !important;
+  border: 1px solid var(--app-border-soft);
+  background: color-mix(in srgb, var(--app-surface-raised) 62%, transparent);
 }
 
 .sidebar-status strong,
@@ -330,55 +324,6 @@ function logout() {
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--app-muted-soft) 14%, transparent);
 }
 
-.el-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--app-header-border);
-  background: var(--app-header-bg);
-  backdrop-filter: blur(18px) saturate(1.05);
-  transition: background-color 0.3s, border-color 0.3s;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.42) inset;
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-weight: 700;
-}
-
-.header-title span {
-  display: block;
-  color: var(--app-text-heading);
-  font-family: var(--app-font-display);
-  font-size: 18px;
-  font-weight: 820;
-  line-height: 1.2;
-}
-
-.header-title small {
-  color: var(--app-muted);
-  font-size: 12px;
-  font-weight: 620;
-  display: block;
-  max-width: min(52vw, 640px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.header-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
 .content-shell {
   min-width: 0;
   height: 100dvh;
@@ -387,9 +332,9 @@ function logout() {
 
 .main-content {
   width: 100%;
-  height: calc(100dvh - 56px);
-  margin: 0;
-  padding: 16px;
+  height: 100dvh;
+  margin: 0 auto;
+  padding: 12px;
   min-height: 0;
   overflow: hidden;
 }

@@ -51,28 +51,26 @@
       <el-empty v-else-if="!loading && filteredServers.length === 0" description="没有匹配的服务器" />
       <el-table v-else :data="filteredServers" v-loading="loading" @selection-change="onSelectionChange">
         <el-table-column type="selection" width="44" />
-        <el-table-column prop="ip" label="IP" width="150" show-overflow-tooltip />
+        <el-table-column prop="ip" label="IP" width="128" show-overflow-tooltip />
         <el-table-column prop="hostname" label="主机名" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="ssh_port" label="SSH" width="80" />
-        <el-table-column prop="ssh_username" label="用户" width="110" />
-        <el-table-column prop="project" label="项目" width="120" show-overflow-tooltip />
-        <el-table-column prop="environment" label="环境" width="100">
+        <el-table-column prop="ssh_port" label="SSH" width="64" />
+        <el-table-column prop="ssh_username" label="用户" width="86" show-overflow-tooltip />
+        <el-table-column prop="project" label="项目" width="96" show-overflow-tooltip />
+        <el-table-column prop="environment" label="环境" width="82">
           <template #default="{ row }">
             <el-tag :type="envTagType(row.environment)" size="small">{{ envLabel(row.environment) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" width="88">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="tags" label="标签" min-width="160" show-overflow-tooltip />
-        <el-table-column label="操作" width="310" fixed="right">
+        <el-table-column prop="tags" label="标签" min-width="110" show-overflow-tooltip />
+        <el-table-column label="操作" width="154" fixed="right">
           <template #default="{ row }">
             <div class="row-actions server-row-actions">
               <el-button size="small" :loading="testing === row.id" @click="test(row)">测试</el-button>
-              <el-button size="small" @click="openOverview(row)">概览</el-button>
-              <el-button size="small" icon="Monitor" @click="openTerminal(row)">终端</el-button>
               <el-popover
                 placement="bottom-end"
                 trigger="click"
@@ -85,6 +83,8 @@
                   <el-button size="small" icon="MoreFilled">更多</el-button>
                 </template>
                 <div class="server-more-menu">
+                  <button type="button" @click="handleServerMore(row, 'overview')">服务器概览</button>
+                  <button type="button" @click="handleServerMore(row, 'terminal')">SSH 终端</button>
                   <button type="button" @click="handleServerMore(row, 'command')">执行命令</button>
                   <button type="button" @click="handleServerMore(row, 'files')">远程文件</button>
                   <button type="button" @click="handleServerMore(row, 'edit')">编辑资产</button>
@@ -473,7 +473,11 @@ async function remove(row) {
 
 function handleServerMore(row, command) {
   activeServerMoreId.value = null
-  if (command === 'command') {
+  if (command === 'overview') {
+    openOverview(row)
+  } else if (command === 'terminal') {
+    openTerminal(row)
+  } else if (command === 'command') {
     openCommand(row)
   } else if (command === 'files') {
     openFiles(row)
@@ -739,16 +743,20 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .server-actions {
-  max-width: 760px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) 124px minmax(128px, 0.8fr) repeat(3, auto);
+  align-items: center;
+  justify-content: end;
+  max-width: 880px;
 }
 
 .server-search {
-  width: 260px;
+  width: 100%;
 }
 
 .env-filter,
 .project-filter {
-  width: 132px;
+  width: 100%;
 }
 
 .server-row-actions {
@@ -757,35 +765,6 @@ onBeforeUnmount(() => {
 
 :global(.server-more-popper) {
   padding: 6px;
-}
-
-.server-more-menu {
-  display: grid;
-  gap: 2px;
-}
-
-.server-more-menu button {
-  width: 100%;
-  border: 0;
-  border-radius: var(--app-radius-sm);
-  padding: 8px 10px;
-  color: var(--app-text);
-  background: transparent;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  text-align: left;
-  cursor: pointer;
-}
-
-.server-more-menu button:hover {
-  color: var(--app-primary);
-  background: var(--app-primary-softer);
-}
-
-.server-more-menu button.danger:hover {
-  color: var(--app-danger);
-  background: var(--app-danger-soft);
 }
 
 .terminal-box {
@@ -804,26 +783,17 @@ onBeforeUnmount(() => {
 .overview-section h4 {
   margin: 0 0 8px;
   color: var(--app-text-heading);
+  font-size: 14px;
+  font-weight: 760;
 }
 
 .command-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 16px;
+  margin: 12px 0 16px;
 }
 
 .quick-commands,
 .file-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
   margin-bottom: 16px;
-}
-
-.file-toolbar .el-input {
-  flex: 1 1 280px;
 }
 
 .file-editor :deep(.el-textarea__inner) {

@@ -402,11 +402,13 @@ onMounted(() => {
 }
 
 .chat-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(180px, auto) 160px auto;
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
+  min-width: 0;
+  max-width: 820px;
 }
 
 .dry-run-control,
@@ -464,14 +466,14 @@ onMounted(() => {
 .agent-console {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
+  gap: 12px;
   min-height: 0;
   height: 100%;
   overflow: hidden;
 }
 
 .agent-console.with-context {
-  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-columns: 264px minmax(0, 1fr);
 }
 
 .agent-context {
@@ -496,7 +498,7 @@ onMounted(() => {
 }
 
 .context-form :deep(.el-form-item) {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .tool-module {
@@ -514,20 +516,20 @@ onMounted(() => {
   height: 100%;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
 }
 
 .messages {
   min-height: 0;
   overflow: auto;
-  padding: 8px 8px 0;
+  padding: 4px 4px 0;
 }
 
 .empty-hint {
-  width: min(100%, 560px);
-  margin: 48px auto 0;
-  padding: 24px;
+  width: min(100%, 640px);
+  margin: 36px auto 0;
+  padding: 22px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-lg);
   color: var(--app-muted);
@@ -783,13 +785,13 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 120px;
   align-items: stretch;
-  gap: 16px;
-  padding-top: 16px;
+  gap: 10px;
+  padding-top: 12px;
   border-top: 1px solid var(--app-border-soft);
 }
 
 .composer.with-run-control {
-  grid-template-columns: 1fr 184px 120px;
+  grid-template-columns: 1fr 144px 104px;
 }
 
 .composer :deep(.el-textarea__inner) {
@@ -804,7 +806,7 @@ onMounted(() => {
 .composer-run-control {
   justify-content: center;
   min-height: 72px;
-  padding: 8px 16px;
+  padding: 8px 10px;
 }
 
 .composer-run-control span {
@@ -921,6 +923,36 @@ onMounted(() => {
 .confirm-fade-leave-to .confirm-dialog {
   opacity: 0;
   transform: translateY(8px) scale(0.98);
+}
+
+@media (max-width: 1500px) {
+  .chat-actions {
+    grid-template-columns: auto 154px auto;
+    max-width: 660px;
+  }
+
+  .dry-run-control {
+    display: none;
+  }
+
+  .agent-console.with-context {
+    grid-template-columns: 248px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .agent-context,
+  .chat {
+    padding: 10px;
+  }
+
+  .bubble {
+    max-width: min(760px, 92%);
+  }
+
+  .composer.with-run-control {
+    grid-template-columns: 1fr 128px 96px;
+    gap: 8px;
+  }
 }
 
 </style>

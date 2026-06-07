@@ -432,8 +432,8 @@ onMounted(load)
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
@@ -442,10 +442,10 @@ onMounted(load)
 .settings-card {
   display: grid;
   align-content: start;
-  gap: 16px;
-  grid-column: span 3;
+  gap: 12px;
+  grid-column: auto;
   min-height: 0;
-  padding: 16px;
+  padding: 14px;
 }
 
 .settings-card-head {
@@ -454,7 +454,7 @@ onMounted(load)
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--app-border-soft);
 }
 
@@ -474,7 +474,7 @@ onMounted(load)
 .settings-card h3 {
   margin: 0;
   color: var(--app-text-heading);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
@@ -494,7 +494,7 @@ onMounted(load)
 }
 
 .settings-card :deep(.el-form-item) {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .settings-card :deep(.el-form-item:last-child) {
@@ -563,7 +563,7 @@ onMounted(load)
 
 .agent-runtime-card {
   grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.7fr);
   align-items: start;
   background:
     linear-gradient(90deg, var(--app-surface), var(--app-primary-softer) 72%, color-mix(in srgb, var(--app-accent-soft) 44%, transparent));
@@ -686,6 +686,16 @@ onMounted(load)
 
 .settings-note strong {
   color: var(--app-text-heading);
+}
+
+@media (min-width: 1680px) {
+  .settings-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .agent-runtime-card {
+    grid-column: 1 / -1;
+  }
 }
 
 </style>
