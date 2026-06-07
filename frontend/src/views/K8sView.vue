@@ -946,7 +946,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .k8s-console {
   display: grid;
-  gap: 20px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .eyebrow {
@@ -974,8 +978,10 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 272px minmax(0, 1fr) 330px;
   gap: 18px;
-  min-height: 680px;
+  min-height: 0;
+  height: 100%;
   padding: 16px;
+  overflow: hidden;
 }
 
 .k8s-sidebar,
@@ -994,7 +1000,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 14px;
   padding: 14px;
-  max-height: calc(100dvh - 188px);
+  height: 100%;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -1108,9 +1115,12 @@ onBeforeUnmount(() => {
 
 .k8s-content {
   min-width: 0;
+  min-height: 0;
   display: grid;
   align-content: start;
   gap: 14px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .ops-bar {
@@ -1246,6 +1256,9 @@ onBeforeUnmount(() => {
   display: grid;
   align-content: start;
   gap: 14px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
   padding: 14px;
   border: 1px solid var(--app-border-soft);
 }
@@ -1353,8 +1366,22 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1320px) {
+  .k8s-console {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+
   .k8s-workbench {
     grid-template-columns: 248px minmax(0, 1fr);
+    height: auto;
+    min-height: 680px;
+    overflow: visible;
+  }
+
+  .k8s-content,
+  .resource-detail {
+    overflow: visible;
   }
 
   .resource-detail {

@@ -148,18 +148,18 @@ onMounted(load)
 <style scoped>
 .dashboard-page {
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .overview-hero {
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
-  min-height: 180px;
-  padding: 26px;
+  min-height: 128px;
+  padding: 20px 22px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
@@ -173,8 +173,8 @@ onMounted(load)
 .overview-hero::after {
   position: absolute;
   right: 22px;
-  bottom: 18px;
-  width: min(38%, 440px);
+  bottom: 14px;
+  width: min(30%, 360px);
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
   content: '';
@@ -202,16 +202,16 @@ onMounted(load)
 
 .hero-copy {
   max-width: 56ch;
-  margin: 10px 0 0;
+  margin: 7px 0 0;
   color: var(--app-muted);
-  line-height: 1.7;
+  line-height: 1.62;
 }
 
 .hero-metrics {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .hero-metrics span {
@@ -268,7 +268,7 @@ onMounted(load)
 .dash-grid {
   display: grid;
   grid-template-columns: 1.35fr repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .stat-card {
@@ -276,15 +276,15 @@ onMounted(load)
   overflow: hidden;
   display: grid;
   align-content: space-between;
-  gap: 18px;
-  min-height: 134px;
+  gap: 14px;
+  min-height: 116px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
-  padding: 20px;
+  padding: 16px;
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.2s;
 }
 
@@ -338,7 +338,7 @@ onMounted(load)
 .stat-num {
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 860;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -458,7 +458,8 @@ onMounted(load)
   .overview-hero {
     align-items: stretch;
     flex-direction: column;
-    padding: 20px;
+    min-height: auto;
+    padding: 16px;
   }
 
   .hero-actions {

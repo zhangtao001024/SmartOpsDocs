@@ -144,7 +144,9 @@ function logout() {
 
 <style scoped>
 .layout {
+  height: 100dvh;
   min-height: 100dvh;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 280px),
     transparent;
@@ -334,7 +336,8 @@ function logout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 70px;
+  height: 60px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--app-header-border);
   background: var(--app-header-bg);
   backdrop-filter: blur(18px) saturate(1.05);
@@ -377,18 +380,25 @@ function logout() {
 
 .content-shell {
   min-width: 0;
+  height: 100dvh;
+  min-height: 0;
 }
 
 .main-content {
-  width: min(100%, 1540px);
-  margin: 0 auto;
-  padding: 30px;
+  width: 100%;
+  height: calc(100dvh - 60px);
+  margin: 0;
+  padding: 16px 18px 22px;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .layout {
     display: block;
+    height: auto;
+    overflow: visible;
   }
   .sidebar {
     position: relative;
@@ -434,7 +444,9 @@ function logout() {
     gap: 4px;
   }
   .main-content {
+    height: auto;
     padding: 18px 14px 24px;
+    overflow: visible;
   }
 }
 

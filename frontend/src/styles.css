@@ -321,7 +321,7 @@ a:hover {
   margin: 0;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 820;
   line-height: 1.08;
   text-wrap: balance;
@@ -341,11 +341,11 @@ a:hover {
 }
 
 .page-subtitle {
-  max-width: 68ch;
-  margin: 9px 0 0;
+  max-width: 58ch;
+  margin: 7px 0 0;
   color: var(--app-muted);
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.62;
 }
 
 .toolbar {
@@ -382,7 +382,7 @@ a:hover {
     linear-gradient(90deg, rgba(12, 118, 111, 0.035), transparent 48%, rgba(168, 85, 30, 0.025)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
-  padding: 20px;
+  padding: 18px;
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
 }
 
@@ -408,18 +408,18 @@ html.dark .panel::before {
 
 .console-page {
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 .console-hero {
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
-  min-height: 172px;
-  padding: 26px;
+  min-height: 124px;
+  padding: 20px 22px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
@@ -433,8 +433,8 @@ html.dark .panel::before {
 .console-hero::after {
   position: absolute;
   right: 22px;
-  bottom: 18px;
-  width: min(36%, 420px);
+  bottom: 14px;
+  width: min(30%, 360px);
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
   content: '';
@@ -454,15 +454,15 @@ html.dark .console-hero {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .console-status-strip span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
-  padding: 6px 10px;
+  min-height: 28px;
+  padding: 5px 9px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-muted);
@@ -478,7 +478,7 @@ html.dark .console-hero {
 }
 
 .table-panel {
-  padding: 16px;
+  padding: 14px;
 }
 
 .metric-strip {
@@ -502,6 +502,16 @@ html.dark .console-hero {
   box-shadow: var(--app-shadow-xs);
 }
 
+.metric-strip > div {
+  min-height: 72px;
+  padding: 12px 14px;
+}
+
+.summary-card {
+  min-height: 104px;
+  padding: 15px;
+}
+
 .metric-strip span,
 .summary-card span,
 .summary-card small {
@@ -514,10 +524,17 @@ html.dark .console-hero {
 .summary-card strong {
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 28px;
   font-weight: 820;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
+}
+
+.metric-strip strong {
+  font-size: 23px;
+}
+
+.summary-card strong {
+  font-size: 28px;
 }
 
 .summary-card.warning {
@@ -633,6 +650,15 @@ html.dark .el-button--primary {
 
 .el-table .cell {
   line-height: 1.45;
+  padding: 0 10px;
+}
+
+.el-table td.el-table__cell {
+  padding: 8px 0;
+}
+
+.el-table th.el-table__cell {
+  padding: 9px 0;
 }
 
 .el-table th.el-table__cell {
@@ -886,6 +912,17 @@ html.dark .el-button--primary {
 
   .panel {
     padding: 12px;
+  }
+
+  .console-hero {
+    align-items: stretch;
+    flex-direction: column;
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .console-hero::after {
+    display: none;
   }
 
   .el-dialog {

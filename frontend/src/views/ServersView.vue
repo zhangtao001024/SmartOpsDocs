@@ -67,23 +67,30 @@
           </template>
         </el-table-column>
         <el-table-column prop="tags" label="标签" min-width="160" show-overflow-tooltip />
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column label="操作" width="310" fixed="right">
           <template #default="{ row }">
-            <div class="row-actions">
+            <div class="row-actions server-row-actions">
               <el-button size="small" :loading="testing === row.id" @click="test(row)">测试</el-button>
               <el-button size="small" @click="openOverview(row)">概览</el-button>
               <el-button size="small" icon="Monitor" @click="openTerminal(row)">终端</el-button>
-              <el-dropdown @command="(command) => handleServerMore(row, command)">
-                <el-button size="small">更多</el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="command">执行命令</el-dropdown-item>
-                    <el-dropdown-item command="files">远程文件</el-dropdown-item>
-                    <el-dropdown-item command="edit">编辑资产</el-dropdown-item>
-                    <el-dropdown-item divided command="delete">删除资产</el-dropdown-item>
-                  </el-dropdown-menu>
+              <el-popover
+                placement="bottom-end"
+                trigger="click"
+                :width="168"
+                popper-class="server-more-popper"
+                :visible="activeServerMoreId === row.id"
+                @update:visible="(visible) => setServerMoreVisible(row, visible)"
+              >
+                <template #reference>
+                  <el-button size="small" icon="MoreFilled">更多</el-button>
                 </template>
-              </el-dropdown>
+                <div class="server-more-menu">
+                  <button type="button" @click="handleServerMore(row, 'command')">执行命令</button>
+                  <button type="button" @click="handleServerMore(row, 'files')">远程文件</button>
+                  <button type="button" @click="handleServerMore(row, 'edit')">编辑资产</button>
+                  <button type="button" class="danger" @click="handleServerMore(row, 'delete')">删除资产</button>
+                </div>
+              </el-popover>
             </div>
           </template>
         </el-table-column>
@@ -261,6 +268,7 @@ const fileEditorVisible = ref(false)
 const editingRemoteFile = ref('')
 const remoteFileContent = ref('')
 const savingFile = ref(false)
+const activeServerMoreId = ref(null)
 let terminalInstance = null
 let terminalFit = null
 let ws = null
@@ -461,6 +469,23 @@ async function remove(row) {
       ElMessage.error(getApiErrorMessage(error, '删除失败'))
     }
   }
+}
+
+function handleServerMore(row, command) {
+  activeServerMoreId.value = null
+  if (command === 'command') {
+    openCommand(row)
+  } else if (command === 'files') {
+    openFiles(row)
+  } else if (command === 'edit') {
+    openEdit(row)
+  } else if (command === 'delete') {
+    remove(row)
+  }
+}
+
+function setServerMoreVisible(row, visible) {
+  activeServerMoreId.value = visible ? row.id : null
 }
 
 function formatOverview(key) {
@@ -724,6 +749,43 @@ onBeforeUnmount(() => {
 .env-filter,
 .project-filter {
   width: 132px;
+}
+
+.server-row-actions {
+  justify-content: flex-end;
+}
+
+:global(.server-more-popper) {
+  padding: 6px;
+}
+
+.server-more-menu {
+  display: grid;
+  gap: 2px;
+}
+
+.server-more-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: var(--app-radius-sm);
+  padding: 8px 10px;
+  color: var(--app-text);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.server-more-menu button:hover {
+  color: var(--app-primary);
+  background: var(--app-primary-softer);
+}
+
+.server-more-menu button.danger:hover {
+  color: var(--app-danger);
+  background: var(--app-danger-soft);
 }
 
 .terminal-box {

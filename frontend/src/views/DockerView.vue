@@ -90,25 +90,34 @@
             <el-table-column prop="ports" label="端口" />
             <el-table-column label="操作" width="430" fixed="right">
               <template #default="{ row }">
-                <el-button size="small" :loading="acting === row.id + '-start'" @click="action(row, 'start')">启动</el-button>
-                <el-button size="small" :loading="acting === row.id + '-stop'" @click="action(row, 'stop')">停止</el-button>
-                <el-button size="small" type="warning" :loading="acting === row.id + '-restart'" @click="action(row, 'restart')">重启</el-button>
-                <el-button size="small" icon="Monitor" @click="openContainerShell(row)">Shell</el-button>
-                <el-button size="small" icon="FolderOpened" @click="openContainerFiles(row)">文件</el-button>
-                <el-button size="small" icon="Tickets" @click="openCompose(row)">Compose</el-button>
-                <el-dropdown @command="(command) => handleContainerMore(row, command)">
-                  <el-button size="small">更多</el-button>
-                  <template #dropdown>
-                    <el-dropdown-menu>
-                      <el-dropdown-item command="logs">日志</el-dropdown-item>
-                      <el-dropdown-item command="top">Top</el-dropdown-item>
-                      <el-dropdown-item command="inspect">Inspect</el-dropdown-item>
-                      <el-dropdown-item command="pause">暂停</el-dropdown-item>
-                      <el-dropdown-item command="unpause">恢复</el-dropdown-item>
-                      <el-dropdown-item command="kill">Kill</el-dropdown-item>
-                    </el-dropdown-menu>
-                  </template>
-                </el-dropdown>
+                <div class="row-actions docker-row-actions">
+                  <el-button size="small" :loading="acting === row.id + '-start'" @click="action(row, 'start')">启动</el-button>
+                  <el-button size="small" :loading="acting === row.id + '-stop'" @click="action(row, 'stop')">停止</el-button>
+                  <el-button size="small" type="warning" :loading="acting === row.id + '-restart'" @click="action(row, 'restart')">重启</el-button>
+                  <el-button size="small" icon="Monitor" @click="openContainerShell(row)">Shell</el-button>
+                  <el-button size="small" icon="FolderOpened" @click="openContainerFiles(row)">文件</el-button>
+                  <el-button size="small" icon="Tickets" @click="openCompose(row)">Compose</el-button>
+                  <el-popover
+                    placement="bottom-end"
+                    trigger="click"
+                    :width="168"
+                    popper-class="docker-more-popper"
+                    :visible="activeContainerMoreId === row.id"
+                    @update:visible="(visible) => setContainerMoreVisible(row, visible)"
+                  >
+                    <template #reference>
+                      <el-button size="small" icon="MoreFilled">更多</el-button>
+                    </template>
+                    <div class="docker-more-menu">
+                      <button type="button" @click="handleContainerMore(row, 'logs')">日志</button>
+                      <button type="button" @click="handleContainerMore(row, 'top')">Top</button>
+                      <button type="button" @click="handleContainerMore(row, 'inspect')">Inspect</button>
+                      <button type="button" @click="handleContainerMore(row, 'pause')">暂停</button>
+                      <button type="button" @click="handleContainerMore(row, 'unpause')">恢复</button>
+                      <button type="button" class="danger" @click="handleContainerMore(row, 'kill')">Kill</button>
+                    </div>
+                  </el-popover>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -353,6 +362,7 @@ const composeSelectedFile = ref('')
 const composeContent = ref('')
 const composeSaving = ref(false)
 const composeRunning = ref('')
+const activeContainerMoreId = ref(null)
 let shellTerminal = null
 let shellFit = null
 let shellWs = null
@@ -585,6 +595,7 @@ async function inspectVolume(row) {
 }
 
 function handleContainerMore(row, command) {
+  activeContainerMoreId.value = null
   if (command === 'logs') {
     showLogs(row)
   } else if (command === 'top') {
@@ -594,6 +605,10 @@ function handleContainerMore(row, command) {
   } else {
     action(row, command)
   }
+}
+
+function setContainerMoreVisible(row, visible) {
+  activeContainerMoreId.value = visible ? row.id : null
 }
 
 function openContainerShell(row) {
@@ -973,6 +988,10 @@ onBeforeUnmount(disposeContainerShell)
   padding: 16px;
 }
 
+.docker-row-actions {
+  justify-content: flex-end;
+}
+
 .docker-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1045,6 +1064,39 @@ onBeforeUnmount(disposeContainerShell)
 
 .compose-toolbar .el-select {
   flex: 1 1 360px;
+}
+
+:global(.docker-more-popper) {
+  padding: 6px;
+}
+
+.docker-more-menu {
+  display: grid;
+  gap: 2px;
+}
+
+.docker-more-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: var(--app-radius-sm);
+  padding: 8px 10px;
+  color: var(--app-text);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.docker-more-menu button:hover {
+  color: var(--app-primary);
+  background: var(--app-primary-softer);
+}
+
+.docker-more-menu button.danger:hover {
+  color: var(--app-danger);
+  background: var(--app-danger-soft);
 }
 
 .compose-editor :deep(.el-textarea__inner),

@@ -387,18 +387,22 @@ onMounted(() => {
 <style scoped>
 .chat-page {
   display: grid;
-  gap: 20px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-hero {
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
-  min-height: 172px;
-  padding: 26px;
+  min-height: 124px;
+  padding: 20px 22px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
@@ -412,8 +416,8 @@ onMounted(() => {
 .chat-hero::after {
   position: absolute;
   right: 22px;
-  bottom: 18px;
-  width: min(36%, 420px);
+  bottom: 14px;
+  width: min(30%, 360px);
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
   content: '';
@@ -433,15 +437,15 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .chat-status-strip span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
-  padding: 6px 10px;
+  min-height: 28px;
+  padding: 5px 9px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-muted);
@@ -526,6 +530,9 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .agent-console.with-context {
@@ -533,11 +540,9 @@ onMounted(() => {
 }
 
 .agent-context {
-  min-height: calc(100dvh - 244px);
-  align-self: start;
-  position: sticky;
-  top: 86px;
-  max-height: calc(100dvh - 112px);
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
   overflow: auto;
 }
 
@@ -570,14 +575,16 @@ onMounted(() => {
 }
 
 .chat {
-  min-height: calc(100dvh - 244px);
+  min-height: 0;
+  height: 100%;
   display: grid;
-  grid-template-rows: 1fr auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
   padding: 16px;
 }
 
 .messages {
+  min-height: 0;
   overflow: auto;
   padding: 4px 4px 0;
 }
@@ -982,10 +989,17 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
+  .chat-page,
+  .agent-console {
+    height: auto;
+    overflow: visible;
+  }
+
   .chat-hero {
     align-items: stretch;
     flex-direction: column;
-    padding: 20px;
+    min-height: auto;
+    padding: 16px;
   }
 
   .chat-actions {

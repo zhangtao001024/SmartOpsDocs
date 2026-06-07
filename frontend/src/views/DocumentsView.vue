@@ -439,7 +439,10 @@ function scrollToHeading(item) {
     if (!root) return
     const headings = Array.from(root.querySelectorAll(`.article-body h${item.level}`))
     const target = headings.find((node) => node.textContent.trim() === item.text)
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (target) {
+      const top = target.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop - 12
+      root.scrollTo({ top, behavior: 'smooth' })
+    }
   })
 }
 
@@ -619,20 +622,23 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .knowledge-page {
-  min-height: calc(100vh - 96px);
   display: grid;
-  gap: 20px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .knowledge-hero {
   position: relative;
   overflow: hidden;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
-  min-height: 172px;
-  padding: 26px;
+  min-height: 124px;
+  padding: 20px 22px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
@@ -646,8 +652,8 @@ onBeforeUnmount(() => {
 .knowledge-hero::after {
   position: absolute;
   right: 22px;
-  bottom: 18px;
-  width: min(36%, 420px);
+  bottom: 14px;
+  width: min(30%, 360px);
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
   content: '';
@@ -674,24 +680,24 @@ onBeforeUnmount(() => {
 
 .hero-copy {
   max-width: 58ch;
-  margin: 10px 0 0;
+  margin: 7px 0 0;
   color: var(--app-muted);
-  line-height: 1.7;
+  line-height: 1.62;
 }
 
 .hero-insights {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .hero-insights span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
-  padding: 6px 10px;
+  min-height: 28px;
+  padding: 5px 9px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-muted);
@@ -719,9 +725,10 @@ onBeforeUnmount(() => {
 .knowledge-shell {
   display: grid;
   grid-template-columns: minmax(240px, 270px) minmax(0, 1fr) minmax(260px, 300px);
-  align-items: start;
+  align-items: stretch;
   gap: 18px;
-  min-height: calc(100dvh - 220px);
+  min-height: 0;
+  height: 100%;
 }
 
 .kb-nav,
@@ -747,11 +754,10 @@ onBeforeUnmount(() => {
 }
 
 .kb-nav {
-  position: sticky;
-  top: 86px;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  max-height: calc(100dvh - 112px);
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -900,7 +906,8 @@ onBeforeUnmount(() => {
 
 .reader {
   min-width: 0;
-  min-height: calc(100dvh - 220px);
+  min-height: 0;
+  height: 100%;
   overflow: auto;
   padding: 0;
 }
@@ -1167,9 +1174,8 @@ onBeforeUnmount(() => {
 }
 
 .kb-aside {
-  position: sticky;
-  top: 86px;
-  max-height: calc(100dvh - 112px);
+  height: 100%;
+  min-height: 0;
   overflow: auto;
   padding: 16px;
 }
@@ -1343,10 +1349,28 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1180px) {
+  .knowledge-page {
+    height: auto;
+    min-height: calc(100dvh - 98px);
+    overflow: visible;
+  }
+
+  .knowledge-shell {
+    align-items: start;
+    height: auto;
+    min-height: calc(100dvh - 220px);
+  }
+
   .kb-nav,
   .kb-aside {
     position: static;
+    height: auto;
     max-height: none;
+  }
+
+  .reader {
+    height: auto;
+    min-height: 620px;
   }
 
   .knowledge-shell {
@@ -1369,7 +1393,8 @@ onBeforeUnmount(() => {
   .knowledge-hero {
     align-items: stretch;
     flex-direction: column;
-    padding: 20px;
+    min-height: auto;
+    padding: 16px;
   }
 
   .toolbar-actions,
