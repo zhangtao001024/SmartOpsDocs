@@ -1,17 +1,17 @@
 <template>
   <div class="dashboard-page">
-    <div class="overview-hero">
-      <div>
-        <p class="eyebrow">Operations overview</p>
+    <div class="overview-hero console-hero">
+      <div class="page-heading">
+        <p class="page-kicker">Operations overview</p>
         <h2 class="page-title">运维概览</h2>
-        <p class="hero-copy">集中查看资产在线情况、知识库解析状态和常用入口。</p>
-        <div class="hero-metrics" aria-label="运维关键指标">
+        <p class="page-subtitle">集中查看资产在线情况、知识库解析状态和常用入口。</p>
+        <div class="hero-metrics console-status-strip" aria-label="运维关键指标">
           <span><strong>{{ stats.servers_online }}</strong> 在线资产</span>
           <span><strong>{{ stats.documents_parsing }}</strong> 解析任务</span>
           <span><strong>{{ stats.documents_failed }}</strong> 失败文档</span>
         </div>
       </div>
-      <div class="hero-actions">
+      <div class="hero-actions toolbar-actions">
         <div class="sync-status">
           <span class="status-dot"></span>
           本地运行
@@ -148,49 +148,13 @@ onMounted(load)
 <style scoped>
 .dashboard-page {
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 16px;
-}
-
-.overview-hero {
-  position: relative;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  min-height: 128px;
-  padding: 20px 22px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background:
-    linear-gradient(90deg, rgba(12, 118, 111, 0.13), transparent 38%, rgba(168, 85, 30, 0.065)),
-    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.035) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18)),
-    var(--app-surface);
-  box-shadow: var(--app-shadow);
 }
 
-.overview-hero::after {
-  position: absolute;
-  right: 22px;
-  bottom: 14px;
-  width: min(30%, 360px);
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
-  content: '';
-  opacity: 0.72;
-  pointer-events: none;
-}
-
-:global(html.dark) .overview-hero {
-  background:
-    linear-gradient(90deg, rgba(53, 199, 183, 0.12), transparent 42%, rgba(216, 146, 69, 0.05)),
-    repeating-linear-gradient(135deg, rgba(220, 230, 221, 0.032) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
-    var(--app-surface);
-}
-
-.eyebrow,
 .panel-kicker {
   margin: 0 0 8px;
   color: var(--app-accent);
@@ -200,45 +164,10 @@ onMounted(load)
   text-transform: uppercase;
 }
 
-.hero-copy {
-  max-width: 56ch;
-  margin: 7px 0 0;
-  color: var(--app-muted);
-  line-height: 1.62;
-}
-
-.hero-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.hero-metrics span {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  min-height: 32px;
-  padding: 6px 10px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: var(--app-radius);
-  color: var(--app-muted);
-  background: color-mix(in srgb, var(--app-surface-raised) 80%, transparent);
-  box-shadow: var(--app-shadow-xs);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.hero-metrics strong {
-  color: var(--app-text-heading);
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
-}
-
 .hero-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -246,9 +175,9 @@ onMounted(load)
 .sync-status {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   height: 32px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
   color: var(--app-muted);
@@ -268,7 +197,8 @@ onMounted(load)
 .dash-grid {
   display: grid;
   grid-template-columns: 1.35fr repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
+  min-height: 0;
 }
 
 .stat-card {
@@ -276,8 +206,8 @@ onMounted(load)
   overflow: hidden;
   display: grid;
   align-content: space-between;
-  gap: 14px;
-  min-height: 116px;
+  gap: 16px;
+  min-height: 104px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
@@ -322,12 +252,12 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
 .stat-head .el-icon {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--app-radius-md);
   color: var(--app-stat-icon-color);
   background: var(--app-stat-icon-bg);
@@ -338,7 +268,7 @@ onMounted(load)
 .stat-num {
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 860;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -351,7 +281,7 @@ onMounted(load)
 }
 
 .stat-sub {
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--app-muted-soft);
   font-size: 12px;
   line-height: 1.45;
@@ -360,14 +290,18 @@ onMounted(load)
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.25fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chart-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  min-height: 0;
 }
 
 .server-panel {
@@ -399,7 +333,7 @@ onMounted(load)
 
 .chart-legend {
   display: flex;
-  gap: 18px;
+  gap: 24px;
   flex-wrap: wrap;
   justify-content: center;
 }
@@ -407,7 +341,7 @@ onMounted(load)
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--app-muted);
   font-size: 13px;
   font-weight: 600;
@@ -427,51 +361,22 @@ onMounted(load)
   align-items: stretch;
   justify-content: space-between;
   grid-column: 1 / -1;
-  gap: 18px;
+  gap: 16px;
   background:
     linear-gradient(90deg, var(--app-surface), var(--app-primary-softer) 70%, color-mix(in srgb, var(--app-accent-soft) 48%, transparent));
 }
 
 .quick-panel p {
-  margin: 5px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
 }
 
 .quick-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-end;
   justify-content: flex-end;
 }
 
-@media (max-width: 980px) {
-  .dash-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .workspace-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 700px) {
-  .overview-hero {
-    align-items: stretch;
-    flex-direction: column;
-    min-height: auto;
-    padding: 16px;
-  }
-
-  .hero-actions {
-    justify-content: flex-start;
-  }
-
-  .dash-grid {
-    grid-template-columns: 1fr;
-  }
-  .quick-panel {
-    align-items: stretch;
-    flex-direction: column;
-  }
-}
 </style>

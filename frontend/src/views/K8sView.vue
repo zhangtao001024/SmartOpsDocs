@@ -105,39 +105,40 @@
           </div>
         </div>
 
-        <el-empty v-if="!clusterId" description="请先选择或接入一个 K8s 集群" />
+        <div class="k8s-resource-frame">
+          <el-empty v-if="!clusterId" description="请先选择或接入一个 K8s 集群" />
 
-        <template v-else>
-          <section v-if="resource === 'overview'" class="overview-grid" v-loading="loading">
-            <article v-for="item in overviewCards" :key="item.label" class="summary-card" :class="item.tone">
-              <span>{{ item.label }}</span>
-              <strong>{{ item.value }}</strong>
-              <small>{{ item.hint }}</small>
-            </article>
-          </section>
+          <template v-else>
+            <section v-if="resource === 'overview'" class="overview-grid" v-loading="loading">
+              <article v-for="item in overviewCards" :key="item.label" class="summary-card" :class="item.tone">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+                <small>{{ item.hint }}</small>
+              </article>
+            </section>
 
-          <section v-if="resource === 'overview'" class="ops-focus">
-            <div class="focus-row">
-              <span>Warning events</span>
-              <strong>{{ overview.warnings ?? '-' }}</strong>
-              <small>优先处理 Warning 类型事件和重启次数异常的 Pod</small>
-            </div>
-            <div class="focus-row">
-              <span>Pending / Failed pods</span>
-              <strong>{{ pendingFailedPods }}</strong>
-              <small>调度失败、镜像拉取失败、OOM 会集中体现在这里</small>
-            </div>
-            <div class="focus-row">
-              <span>Node readiness</span>
-              <strong>{{ nodeReadiness }}</strong>
-              <small>节点不可用时先查 kubelet、网络和磁盘压力</small>
-            </div>
-          </section>
+            <section v-if="resource === 'overview'" class="ops-focus">
+              <div class="focus-row">
+                <span>Warning events</span>
+                <strong>{{ overview.warnings ?? '-' }}</strong>
+                <small>优先处理 Warning 类型事件和重启次数异常的 Pod</small>
+              </div>
+              <div class="focus-row">
+                <span>Pending / Failed pods</span>
+                <strong>{{ pendingFailedPods }}</strong>
+                <small>调度失败、镜像拉取失败、OOM 会集中体现在这里</small>
+              </div>
+              <div class="focus-row">
+                <span>Node readiness</span>
+                <strong>{{ nodeReadiness }}</strong>
+                <small>节点不可用时先查 kubelet、网络和磁盘压力</small>
+              </div>
+            </section>
 
-          <SkeletonTable v-if="showSkeleton" :rows="6" :cols="5" />
+            <SkeletonTable v-if="showSkeleton" :rows="6" :cols="5" />
 
-          <template v-if="resource === 'nodes' && !showSkeleton">
-            <el-table :data="filteredRows" v-loading="loading" row-key="name" :row-class-name="tableRowClassName" @row-click="selectRow">
+            <template v-if="resource === 'nodes' && !showSkeleton">
+              <el-table :data="filteredRows" v-loading="loading" row-key="name" :row-class-name="tableRowClassName" @row-click="selectRow">
               <el-table-column prop="name" label="节点" min-width="220" show-overflow-tooltip />
               <el-table-column prop="ready" label="Ready" width="100">
                 <template #default="{ row }">
@@ -294,11 +295,12 @@
               <el-table-column prop="message" label="消息" min-width="360" show-overflow-tooltip />
               <el-table-column prop="count" label="次数" width="80" />
               <el-table-column prop="last_time" label="最后发生" width="200" />
-            </el-table>
-          </template>
+              </el-table>
+            </template>
 
-          <el-empty v-if="showEmptyRows" description="没有匹配的资源" />
-        </template>
+            <el-empty v-if="showEmptyRows" description="没有匹配的资源" />
+          </template>
+        </div>
       </section>
 
       <aside class="resource-detail" :class="{ empty: !selectedResource }" aria-label="Resource details">
@@ -954,7 +956,7 @@ onBeforeUnmount(() => {
 }
 
 .eyebrow {
-  margin: 0 0 5px;
+  margin: 0 0 8px;
   color: var(--app-accent);
   font-size: 12px;
   font-weight: 800;
@@ -966,18 +968,18 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
   max-width: 520px;
 }
 
 .cluster-select {
-  width: 320px;
+  width: 288px;
 }
 
 .k8s-workbench {
   display: grid;
-  grid-template-columns: 272px minmax(0, 1fr) 330px;
-  gap: 18px;
+  grid-template-columns: 264px minmax(0, 1fr) 312px;
+  gap: 16px;
   min-height: 0;
   height: 100%;
   padding: 16px;
@@ -998,8 +1000,8 @@ onBeforeUnmount(() => {
 .k8s-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  padding: 12px;
   height: 100%;
   min-height: 0;
   overflow: auto;
@@ -1007,8 +1009,8 @@ onBeforeUnmount(() => {
 
 .cluster-card {
   display: grid;
-  gap: 6px;
-  padding: 14px;
+  gap: 8px;
+  padding: 12px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background:
@@ -1020,7 +1022,7 @@ onBeforeUnmount(() => {
 .cluster-card strong {
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 760;
   overflow-wrap: anywhere;
 }
@@ -1037,7 +1039,7 @@ onBeforeUnmount(() => {
 
 .nav-block {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .nav-heading {
@@ -1052,8 +1054,8 @@ onBeforeUnmount(() => {
 
 .namespace-list {
   display: grid;
-  gap: 5px;
-  max-height: 170px;
+  gap: 4px;
+  max-height: 136px;
   overflow: auto;
   padding-right: 2px;
 }
@@ -1070,7 +1072,7 @@ onBeforeUnmount(() => {
 }
 
 .nav-row {
-  padding: 9px 10px;
+  padding: 9px 12px;
   font-weight: 700;
 }
 
@@ -1078,8 +1080,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
-  padding: 9px;
+  gap: 8px;
+  padding: 8px;
   font-weight: 700;
 }
 
@@ -1117,18 +1119,18 @@ onBeforeUnmount(() => {
   min-width: 0;
   min-height: 0;
   display: grid;
-  align-content: start;
-  gap: 14px;
-  overflow: auto;
-  padding-right: 2px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+  overflow: hidden;
 }
 
 .ops-bar {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 0 4px;
+  gap: 16px;
+  min-height: 56px;
+  padding: 0;
 }
 
 .ops-bar h3 {
@@ -1140,7 +1142,7 @@ onBeforeUnmount(() => {
 }
 
 .ops-bar p {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: var(--app-muted);
   line-height: 1.45;
 }
@@ -1150,7 +1152,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 9px;
+  gap: 8px;
 }
 
 .resource-search {
@@ -1161,17 +1163,30 @@ onBeforeUnmount(() => {
   width: 132px;
 }
 
+.k8s-resource-frame {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.k8s-resource-frame > :deep(.el-table) {
+  min-height: 0;
+}
+
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .summary-card {
   position: relative;
   overflow: hidden;
-  min-height: 112px;
-  padding: 15px;
+  min-height: 88px;
+  padding: 16px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background:
@@ -1198,7 +1213,7 @@ onBeforeUnmount(() => {
 .summary-card strong {
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 27px;
+  font-size: 24px;
   font-weight: 840;
   font-variant-numeric: tabular-nums;
 }
@@ -1221,13 +1236,13 @@ onBeforeUnmount(() => {
 .ops-focus {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 16px;
 }
 
 .focus-row {
   display: grid;
-  gap: 5px;
-  padding: 13px;
+  gap: 8px;
+  padding: 12px;
   border-left: 3px solid var(--app-primary);
   border-radius: var(--app-radius);
   background:
@@ -1255,11 +1270,11 @@ onBeforeUnmount(() => {
 .resource-detail {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 12px;
   height: 100%;
   min-height: 0;
   overflow: auto;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--app-border-soft);
 }
 
@@ -1287,7 +1302,7 @@ onBeforeUnmount(() => {
 }
 
 .detail-heading p {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--app-muted);
   font-family: var(--app-font-mono);
   font-size: 12px;
@@ -1297,8 +1312,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 16px;
   border-radius: var(--app-radius);
   border: 1px solid var(--app-border-soft);
   background: var(--app-surface);
@@ -1311,8 +1326,8 @@ onBeforeUnmount(() => {
 
 .detail-list {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 9px 12px;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px 16px;
   margin: 0;
 }
 
@@ -1363,80 +1378,5 @@ onBeforeUnmount(() => {
 
 :deep(.el-table__row.is-selected-row > td.el-table__cell) {
   background: color-mix(in srgb, var(--app-primary-softer) 82%, var(--app-accent-soft));
-}
-
-@media (max-width: 1320px) {
-  .k8s-console {
-    height: auto;
-    min-height: 100%;
-    overflow: visible;
-  }
-
-  .k8s-workbench {
-    grid-template-columns: 248px minmax(0, 1fr);
-    height: auto;
-    min-height: 680px;
-    overflow: visible;
-  }
-
-  .k8s-content,
-  .resource-detail {
-    overflow: visible;
-  }
-
-  .resource-detail {
-    grid-column: 1 / -1;
-  }
-
-  .resource-detail.empty {
-    display: none;
-  }
-}
-
-@media (max-width: 1100px) {
-  .overview-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ops-focus {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 900px) {
-  .console-hero,
-  .header-actions,
-  .ops-bar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .cluster-select,
-  .resource-search,
-  .status-filter {
-    width: 100%;
-  }
-
-  .k8s-workbench {
-    grid-template-columns: 1fr;
-  }
-
-  .k8s-sidebar {
-    order: 0;
-  }
-
-  .namespace-list {
-    max-height: 140px;
-  }
-}
-
-@media (max-width: 640px) {
-  .overview-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .k8s-workbench {
-    padding: 10px;
-  }
 }
 </style>

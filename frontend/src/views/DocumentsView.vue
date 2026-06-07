@@ -1,11 +1,11 @@
 <template>
   <div class="knowledge-page">
-    <section class="knowledge-hero">
-      <div>
-        <p class="eyebrow">Knowledge reader</p>
+    <section class="knowledge-hero console-hero">
+      <div class="page-heading">
+        <p class="page-kicker">Knowledge reader</p>
         <h2 class="page-title">知识库</h2>
-        <p class="hero-copy">把文档、网页和解析片段整理成可阅读、可检索、可引用的运维知识。</p>
-        <div class="hero-insights" aria-label="知识库状态">
+        <p class="page-subtitle">把文档、网页和解析片段整理成可阅读、可检索、可引用的运维知识。</p>
+        <div class="hero-insights console-status-strip" aria-label="知识库状态">
           <span><strong>{{ documents.length }}</strong> 篇文档</span>
           <span><strong>{{ project || 'default' }}</strong> 当前项目</span>
           <span><strong>{{ detail?.chunks?.length || 0 }}</strong> 当前片段</span>
@@ -26,7 +26,7 @@
       </div>
     </section>
 
-    <div class="knowledge-shell">
+    <div class="knowledge-shell" :class="{ 'toc-collapsed': tocPanelCollapsed }">
       <aside class="kb-nav" aria-label="文档库">
         <div class="nav-head">
           <div>
@@ -83,26 +83,7 @@
         <template v-if="detail">
           <header class="reader-header">
             <div class="reader-title-block">
-              <div class="reader-kicker">
-                <el-tag :type="statusType(detail.status)" size="small" effect="plain">{{ statusLabel(detail.status) }}</el-tag>
-                <span class="reader-source-kind">{{ sourceLabel(detail) }}</span>
-                <span>{{ detail.project }}</span>
-              </div>
               <h1>{{ displayTitle(detail) }}</h1>
-              <p v-if="sourceHint(detail)" class="reader-source-hint">{{ sourceHint(detail) }}</p>
-              <div class="reader-meta">
-                <span>{{ detail.chunks?.length || 0 }} 片段</span>
-                <span>{{ documentStats.words }} 字</span>
-                <span>约 {{ documentStats.minutes }} 分钟</span>
-              </div>
-            </div>
-            <div class="reader-actions">
-              <el-button icon="EditPen" @click="openEditor(detail)">编辑</el-button>
-              <el-button icon="Clock" @click="openTasks(detail)">任务</el-button>
-              <el-button icon="Files" @click="openRevisions(detail)">版本</el-button>
-              <el-button icon="Refresh" :loading="reprocessing" @click="reprocess(detail)">重新解析</el-button>
-              <el-button icon="MagicStick" type="primary" @click="openOptimize(detail)">优化</el-button>
-              <el-button icon="Delete" type="danger" @click="confirmRemoveDoc(detail)">删除</el-button>
             </div>
           </header>
 
@@ -128,29 +109,30 @@
       </main>
 
       <aside class="kb-aside">
-        <section class="aside-section toc-section">
+        <button class="aside-collapse" type="button" @click="tocPanelCollapsed = !tocPanelCollapsed">
+          <el-icon><component :is="tocPanelCollapsed ? 'ArrowLeft' : 'ArrowRight'" /></el-icon>
+          <span>{{ tocPanelCollapsed ? '展开' : '收起' }}</span>
+        </button>
+
+        <section class="aside-section document-tools">
           <div class="aside-heading">
-            <span>Outline</span>
-            <strong>目录</strong>
+            <span>Tools</span>
+            <strong>文档操作</strong>
           </div>
-          <div v-if="toc.length" class="toc">
-            <button
-              v-for="(item, index) in toc"
-              :key="index"
-              type="button"
-              :class="'toc-level-' + item.level"
-              @click="scrollToHeading(item)"
-            >
-              {{ item.text }}
-            </button>
+          <div class="reader-actions">
+            <el-button icon="EditPen" :disabled="!detail" @click="openEditor(detail)">编辑</el-button>
+            <el-button icon="MagicStick" type="primary" :disabled="!detail" @click="openOptimize(detail)">优化</el-button>
+            <el-button icon="Clock" :disabled="!detail" @click="handleReaderCommand('tasks')">解析任务</el-button>
+            <el-button icon="Files" :disabled="!detail" @click="handleReaderCommand('revisions')">文档版本</el-button>
+            <el-button icon="Refresh" :loading="reprocessing" :disabled="!detail" @click="handleReaderCommand('reprocess')">重新解析</el-button>
+            <el-button icon="Delete" type="danger" text :disabled="!detail" @click="handleReaderCommand('delete')">删除文档</el-button>
           </div>
-          <p v-else class="aside-empty">当前文档没有标题层级</p>
         </section>
 
-        <section class="aside-section">
+        <section class="aside-section search-section">
           <div class="aside-heading">
             <span>Search</span>
-            <strong>检索</strong>
+            <strong>知识检索</strong>
           </div>
           <el-input
             v-model="searchText"
@@ -179,18 +161,25 @@
           </div>
         </section>
 
-        <section class="aside-section agent-section">
+        <section class="aside-section toc-section">
           <div class="aside-heading">
-            <span>Integration</span>
-            <strong>Agent API</strong>
+            <span>Outline</span>
+            <strong>目录</strong>
           </div>
-          <code>POST /api/agent/knowledge/query</code>
-          <pre>{
-  "query": "{{ searchText || '如何排查 Pod 异常' }}",
-  "project": "{{ project || 'default' }}",
-  "limit": 5
-}</pre>
+          <div v-if="toc.length" class="toc">
+            <button
+              v-for="(item, index) in toc"
+              :key="index"
+              type="button"
+              :class="'toc-level-' + item.level"
+              @click="scrollToHeading(item)"
+            >
+              {{ item.text }}
+            </button>
+          </div>
+          <p v-else class="aside-empty">当前文档没有标题层级</p>
         </section>
+
       </aside>
     </div>
 
@@ -300,6 +289,7 @@ const loading = ref(false)
 const detail = ref(null)
 const selectedId = ref(null)
 const articleRef = ref(null)
+const tocPanelCollapsed = ref(false)
 const searchText = ref('')
 const searchResults = ref([])
 const searching = ref(false)
@@ -328,12 +318,6 @@ const revisionsLoading = ref(false)
 const revisions = ref([])
 const headers = computed(() => ({ Authorization: `Bearer ${localStorage.getItem('smartopsdocs_token') || ''}` }))
 let listTimer = null
-
-const documentStats = computed(() => {
-  const text = detail.value?.content || ''
-  const words = text.replace(/\s/g, '').length
-  return { words, minutes: Math.max(1, Math.ceil(words / 600)) }
-})
 
 const toc = computed(() => {
   const text = detail.value?.content || ''
@@ -643,6 +627,14 @@ async function reprocess(row) {
   }
 }
 
+function handleReaderCommand(command) {
+  if (!detail.value) return
+  if (command === 'tasks') openTasks(detail.value)
+  if (command === 'revisions') openRevisions(detail.value)
+  if (command === 'reprocess') reprocess(detail.value)
+  if (command === 'delete') confirmRemoveDoc(detail.value)
+}
+
 async function openTasks(row) {
   selectedDocument.value = row
   tasksVisible.value = true
@@ -752,92 +744,11 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
-.knowledge-hero {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  min-height: 124px;
-  padding: 20px 22px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background:
-    linear-gradient(90deg, rgba(12, 118, 111, 0.12), transparent 38%, rgba(168, 85, 30, 0.06)),
-    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.035) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18)),
-    var(--app-surface);
-  box-shadow: var(--app-shadow);
-}
-
-.knowledge-hero::after {
-  position: absolute;
-  right: 22px;
-  bottom: 14px;
-  width: min(30%, 360px);
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
-  content: '';
-  opacity: 0.72;
-  pointer-events: none;
-}
-
-:global(html.dark) .knowledge-hero {
-  background:
-    linear-gradient(90deg, rgba(53, 199, 183, 0.11), transparent 42%, rgba(216, 146, 69, 0.05)),
-    repeating-linear-gradient(135deg, rgba(220, 230, 221, 0.032) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
-    var(--app-surface);
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  color: var(--app-accent);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.hero-copy {
-  max-width: 58ch;
-  margin: 7px 0 0;
-  color: var(--app-muted);
-  line-height: 1.62;
-}
-
-.hero-insights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.hero-insights span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 5px 9px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: var(--app-radius);
-  color: var(--app-muted);
-  background: color-mix(in srgb, var(--app-surface-raised) 80%, transparent);
-  box-shadow: var(--app-shadow-xs);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.hero-insights strong {
-  color: var(--app-text-heading);
-  font-variant-numeric: tabular-nums;
-}
-
 .toolbar-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .toolbar-actions .el-input {
@@ -850,11 +761,16 @@ onBeforeUnmount(() => {
 
 .knowledge-shell {
   display: grid;
-  grid-template-columns: minmax(240px, 270px) minmax(0, 1fr) minmax(260px, 300px);
+  grid-template-columns: 288px minmax(0, 1fr) 312px;
   align-items: stretch;
-  gap: 18px;
+  gap: 16px;
   min-height: 0;
   height: 100%;
+  transition: grid-template-columns 0.24s ease;
+}
+
+.knowledge-shell.toc-collapsed {
+  grid-template-columns: 288px minmax(0, 1fr) 56px;
 }
 
 .kb-nav,
@@ -891,14 +807,14 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 16px 16px 14px;
+  gap: 16px;
+  padding: 16px;
   border-bottom: 1px solid var(--app-border-soft);
 }
 
 .nav-head p,
 .aside-heading span {
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   color: var(--app-muted);
   font-size: 11px;
   font-weight: 760;
@@ -916,12 +832,12 @@ onBeforeUnmount(() => {
 }
 
 .upload-box {
-  padding: 12px 14px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--app-border-soft);
 }
 
 .upload-box :deep(.el-upload-dragger) {
-  padding: 14px 12px;
+  padding: 12px;
   border-color: var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background: var(--app-surface-soft);
@@ -937,7 +853,7 @@ onBeforeUnmount(() => {
 .upload-content {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   text-align: left;
 }
 
@@ -966,11 +882,11 @@ onBeforeUnmount(() => {
 
 .doc-list {
   overflow: auto;
-  padding: 10px;
+  padding: 12px;
 }
 
 .doc-empty {
-  padding: 14px;
+  padding: 16px;
   border: 1px dashed var(--app-border);
   border-radius: var(--app-radius-md);
   color: var(--app-muted);
@@ -985,8 +901,8 @@ onBeforeUnmount(() => {
   grid-template-areas:
     "mark copy"
     "mark meta";
-  column-gap: 10px;
-  row-gap: 7px;
+  column-gap: 12px;
+  row-gap: 8px;
   align-items: start;
   position: relative;
   width: 100%;
@@ -1001,7 +917,7 @@ onBeforeUnmount(() => {
 }
 
 .doc-item + .doc-item {
-  margin-top: 3px;
+  margin-top: 8px;
 }
 
 .doc-item:hover {
@@ -1074,7 +990,7 @@ onBeforeUnmount(() => {
 .doc-subtitle {
   display: block;
   overflow: hidden;
-  margin-top: 4px;
+  margin-top: 8px;
   color: var(--app-muted);
   font-size: 11px;
   font-weight: 620;
@@ -1101,103 +1017,44 @@ onBeforeUnmount(() => {
 }
 
 .reader-header {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 30px clamp(28px, 5vw, 58px) 24px;
+  padding: 24px 56px 16px;
   border-bottom: 1px solid var(--app-border-soft);
   background:
-    linear-gradient(90deg, rgba(12, 118, 111, 0.09), transparent 42%, rgba(168, 85, 30, 0.035)),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.06), transparent 48%, rgba(168, 85, 30, 0.025)),
     var(--app-surface);
 }
 
 .reader-header h1 {
-  max-width: 28ch;
+  max-width: 34ch;
   margin: 0;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 40px;
+  font-size: 34px;
   font-weight: 860;
-  line-height: 1.08;
+  line-height: 1.14;
   overflow-wrap: anywhere;
   text-wrap: balance;
-}
-
-.reader-kicker {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  color: var(--app-muted);
-  font-size: 12px;
-  font-weight: 680;
 }
 
 .reader-title-block {
   min-width: 0;
 }
 
-.reader-source-kind {
-  color: var(--app-primary);
-}
-
-.reader-source-hint {
-  display: -webkit-box;
-  max-width: min(720px, 100%);
-  overflow: hidden;
-  margin: 12px 0 0;
-  color: var(--app-muted);
-  font-family: var(--app-font-mono);
-  font-size: 12px;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.reader-meta,
 .reader-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-}
-
-.reader-meta {
-  margin-top: 14px;
-  color: var(--app-muted);
-  font-size: 13px;
-}
-
-.reader-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.reader-meta span + span::before {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--app-muted-soft);
-  content: '';
-}
-
-.reader-actions {
-  justify-content: flex-end;
-  max-width: 420px;
 }
 
 .reader-alert {
-  margin: 20px clamp(28px, 5vw, 58px) 0;
+  margin: 16px 56px 0;
 }
 
 .article-body {
-  width: min(100%, 960px);
+  width: min(100%, 1040px);
   margin: 0 auto;
-  padding: 34px clamp(22px, 4vw, 54px) 72px;
+  padding: 32px 56px 72px;
   color: var(--app-text);
   font-size: 16px;
   line-height: 1.9;
@@ -1296,7 +1153,7 @@ onBeforeUnmount(() => {
 .article-body :deep(pre) {
   overflow-x: auto;
   margin: 1.25em 0;
-  padding: 16px 18px;
+  padding: 16px 24px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--app-radius-lg);
   color: var(--app-terminal-text);
@@ -1375,45 +1232,112 @@ onBeforeUnmount(() => {
 }
 
 .empty-copy p {
-  margin: 12px 0 20px;
+  margin: 16px 0 24px;
   color: var(--app-muted);
   line-height: 1.75;
 }
 
 .kb-aside {
+  position: relative;
   height: 100%;
   min-height: 0;
   overflow: auto;
-  padding: 16px;
+  padding: 12px;
+}
+
+.aside-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  margin-bottom: 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+  color: var(--app-text-soft);
+  background: var(--app-surface-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.aside-collapse:hover {
+  border-color: var(--app-primary-border);
+  color: var(--app-primary);
+  background: var(--app-primary-softer);
+  transform: translateY(-1px);
+}
+
+.knowledge-shell.toc-collapsed .kb-aside {
+  overflow: hidden;
+  padding: 8px;
+}
+
+.knowledge-shell.toc-collapsed .aside-collapse {
+  min-height: 40px;
+  margin-bottom: 0;
+}
+
+.knowledge-shell.toc-collapsed .aside-collapse span,
+.knowledge-shell.toc-collapsed .aside-section {
+  display: none;
 }
 
 .aside-section {
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--app-border-soft);
+  padding: 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-surface-raised) 66%, transparent);
 }
 
 .aside-section + .aside-section {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .aside-section:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
+  border-bottom: 1px solid var(--app-border-soft);
 }
 
 .aside-heading {
   margin-bottom: 12px;
 }
 
+.document-tools .reader-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.document-tools .reader-actions :deep(.el-button) {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 36px;
+  margin-left: 0;
+  padding: 0 12px;
+}
+
+.document-tools .reader-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.document-tools .reader-actions :deep(.el-icon) {
+  width: 16px;
+  margin-right: 6px;
+}
+
 .search-results {
   display: grid;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 12px;
+  max-height: 280px;
+  overflow: auto;
 }
 
 .search-result {
   width: 100%;
-  padding: 11px;
+  padding: 12px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
   background: var(--app-surface-soft);
@@ -1455,6 +1379,8 @@ onBeforeUnmount(() => {
 .toc {
   display: grid;
   gap: 2px;
+  max-height: 340px;
+  overflow: auto;
 }
 
 .toc button {
@@ -1499,34 +1425,16 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
-.agent-section code,
-.agent-section pre {
-  display: block;
-  overflow: auto;
-  border: 1px solid var(--app-border-soft);
-  border-radius: var(--app-radius-md);
-  background: var(--app-code-bg);
-  color: var(--app-code-text);
-  font-family: var(--app-font-mono);
-  font-size: 12px;
-}
-
-.agent-section code {
-  padding: 8px 10px;
-}
-
-.agent-section pre {
-  margin: 8px 0 0;
-  padding: 10px;
-  white-space: pre-wrap;
+:global(.danger-dropdown-item) {
+  color: var(--app-danger) !important;
 }
 
 .optimized-output {
   min-height: 260px;
   max-height: 60vh;
   overflow: auto;
-  margin: 12px 0 0;
-  padding: 12px;
+  margin: 16px 0 0;
+  padding: 16px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
   background: var(--app-surface-soft);
@@ -1547,109 +1455,11 @@ onBeforeUnmount(() => {
 .optimize-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 12px 0;
+  gap: 8px;
+  margin: 16px 0;
 }
 
 .optimize-alert {
-  margin-bottom: 12px;
-}
-
-@media (max-width: 1180px) {
-  .knowledge-page {
-    height: auto;
-    min-height: calc(100dvh - 98px);
-    overflow: visible;
-  }
-
-  .knowledge-shell {
-    align-items: start;
-    height: auto;
-    min-height: calc(100dvh - 220px);
-  }
-
-  .kb-nav,
-  .kb-aside {
-    position: static;
-    height: auto;
-    max-height: none;
-  }
-
-  .reader {
-    height: auto;
-    min-height: 620px;
-  }
-
-  .knowledge-shell {
-    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-  }
-
-  .kb-aside {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-  }
-
-  .aside-section + .aside-section {
-    margin-top: 0;
-  }
-}
-
-@media (max-width: 780px) {
-  .knowledge-hero {
-    align-items: stretch;
-    flex-direction: column;
-    min-height: auto;
-    padding: 16px;
-  }
-
-  .toolbar-actions,
-  .reader-header,
-  .reader-actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .toolbar-actions .el-input {
-    width: 100%;
-  }
-
-  .toolbar-actions .status-filter {
-    width: 100%;
-  }
-
-  .knowledge-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .kb-nav {
-    max-height: 420px;
-  }
-
-  .reader-header {
-    padding: 22px;
-  }
-
-  .reader {
-    min-height: 520px;
-  }
-
-  .kb-aside {
-    display: block;
-  }
-
-  .aside-section + .aside-section {
-    margin-top: 22px;
-  }
-
-  .article-body {
-    padding: 24px 22px 44px;
-    font-size: 15px;
-  }
-
-  .reader-meta span + span::before {
-    display: none;
-  }
+  margin-bottom: 16px;
 }
 </style>

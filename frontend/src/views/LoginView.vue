@@ -94,10 +94,10 @@ async function login() {
 .login-page {
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
+  grid-template-columns: minmax(0, 1fr) 456px;
   align-items: center;
-  gap: clamp(44px, 7vw, 108px);
-  padding: clamp(28px, 6vw, 72px);
+  gap: 96px;
+  padding: 64px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.7), transparent 340px),
     linear-gradient(90deg, rgba(12, 118, 111, 0.12), transparent 44%, rgba(168, 85, 30, 0.06)),
@@ -113,9 +113,9 @@ async function login() {
 
 .brand-lockup {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
-  margin-bottom: clamp(44px, 8vw, 96px);
+  margin-bottom: 96px;
 }
 
 .brand-mark {
@@ -150,7 +150,7 @@ async function login() {
 }
 
 .eyebrow {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   color: var(--app-accent);
   font-size: 12px;
   font-weight: 800;
@@ -159,7 +159,7 @@ async function login() {
 }
 
 h1 {
-  max-width: 12.5ch;
+  max-width: 13ch;
   margin: 0;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
@@ -171,7 +171,7 @@ h1 {
 
 .intro {
   max-width: 58ch;
-  margin: 22px 0 0;
+  margin: 24px 0 0;
   color: var(--app-muted);
   font-size: 16px;
   line-height: 1.8;
@@ -180,12 +180,12 @@ h1 {
 .signal-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 190px));
-  gap: 12px;
-  margin-top: 38px;
+  gap: 16px;
+  margin-top: 40px;
 }
 
 .signal-grid div {
-  min-height: 92px;
+  min-height: 96px;
   padding: 16px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
@@ -209,7 +209,7 @@ h1 {
 
 .signal-grid strong {
   display: block;
-  margin-top: 12px;
+  margin-top: 16px;
   color: var(--app-text-heading);
   font-size: 15px;
   font-weight: 760;
@@ -219,10 +219,10 @@ h1 {
   display: grid;
   grid-template-columns: auto minmax(36px, 120px) auto minmax(36px, 120px) auto;
   align-items: center;
-  gap: 10px;
-  width: min(100%, 620px);
-  margin-top: 28px;
-  padding: 12px;
+  gap: 16px;
+  width: 620px;
+  margin-top: 32px;
+  padding: 16px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background: color-mix(in srgb, var(--app-surface-raised) 74%, transparent);
@@ -231,7 +231,7 @@ h1 {
 
 .diagram-node {
   min-width: 86px;
-  padding: 9px 10px;
+  padding: 8px 16px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-text-heading);
@@ -329,65 +329,16 @@ h1 {
 
 .el-form {
   display: grid;
-  gap: 6px;
+  gap: 8px;
 }
 
 .el-button {
   width: 100%;
-  min-height: 44px;
+  min-height: 48px;
 }
 
 .muted {
   margin: 16px 0 0;
   font-size: 12px;
-}
-
-@media (max-width: 900px) {
-  .login-page {
-    grid-template-columns: 1fr;
-    gap: 28px;
-    padding: 24px;
-  }
-
-  .brand-lockup {
-    margin-bottom: 42px;
-  }
-
-  h1 {
-    max-width: 14ch;
-    font-size: 56px;
-  }
-
-  .login-panel {
-    max-width: 460px;
-  }
-}
-
-@media (max-width: 560px) {
-  .login-page {
-    padding: 18px;
-  }
-
-  .signal-grid {
-    grid-template-columns: 1fr;
-  }
-
-  h1 {
-    font-size: 42px;
-  }
-
-  .login-diagram {
-    grid-template-columns: 1fr;
-  }
-
-  .diagram-line {
-    width: 1px;
-    height: 24px;
-    justify-self: center;
-  }
-
-  .login-panel {
-    padding: 22px;
-  }
 }
 </style>

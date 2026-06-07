@@ -44,7 +44,7 @@ function barPct(bar) {
 }
 
 .bar-chart-title {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
   font-size: 15px;
@@ -54,13 +54,13 @@ function barPct(bar) {
 .bars {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .bar-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .bar-label {

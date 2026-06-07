@@ -1,11 +1,11 @@
 <template>
   <div class="chat-page">
-    <section class="chat-hero">
+    <section class="chat-hero console-hero">
       <div class="page-heading">
         <p class="page-kicker">Knowledge agent console</p>
         <h2 class="page-title">知识库智能体</h2>
         <p class="page-subtitle">OpenClaw 模式会把知识库片段、会话历史和引用交给 Gateway 智能体；内置模式保留本地检索问答。</p>
-        <div class="chat-status-strip">
+        <div class="chat-status-strip console-status-strip">
           <span><strong>{{ mode === 'agent' ? 'Ops Agent' : 'Knowledge Agent' }}</strong> 当前模式</span>
           <span><strong>{{ messages.length }}</strong> 历史消息</span>
           <span><strong>{{ activeContextCount }}</strong> 上下文项</span>
@@ -395,72 +395,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.chat-hero {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  min-height: 124px;
-  padding: 20px 22px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  background:
-    linear-gradient(90deg, rgba(12, 118, 111, 0.12), transparent 38%, rgba(168, 85, 30, 0.06)),
-    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.035) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18)),
-    var(--app-surface);
-  box-shadow: var(--app-shadow);
-}
-
-.chat-hero::after {
-  position: absolute;
-  right: 22px;
-  bottom: 14px;
-  width: min(30%, 360px);
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
-  content: '';
-  opacity: 0.72;
-  pointer-events: none;
-}
-
-:global(html.dark) .chat-hero {
-  background:
-    linear-gradient(90deg, rgba(53, 199, 183, 0.11), transparent 42%, rgba(216, 146, 69, 0.05)),
-    repeating-linear-gradient(135deg, rgba(220, 230, 221, 0.032) 0 1px, transparent 1px 16px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
-    var(--app-surface);
-}
-
-.chat-status-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.chat-status-strip span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 5px 9px;
-  border: 1px solid var(--app-border-soft);
-  border-radius: var(--app-radius);
-  color: var(--app-muted);
-  background: color-mix(in srgb, var(--app-surface-raised) 80%, transparent);
-  box-shadow: var(--app-shadow-xs);
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.chat-status-strip strong {
-  color: var(--app-text-heading);
-  font-variant-numeric: tabular-nums;
-}
-
 .chat-status-strip .run-status-live {
   border-color: color-mix(in srgb, var(--app-danger) 46%, var(--app-border-soft));
   color: var(--app-danger);
@@ -479,7 +413,7 @@ onMounted(() => {
 .composer-run-control {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid color-mix(in srgb, var(--app-warning) 42%, var(--app-border-soft));
   border-radius: var(--app-radius);
   background: color-mix(in srgb, var(--app-warning) 9%, var(--app-surface-raised));
@@ -488,8 +422,8 @@ onMounted(() => {
 }
 
 .dry-run-control {
-  min-height: 42px;
-  padding: 6px 10px 6px 12px;
+  min-height: 48px;
+  padding: 8px 16px;
 }
 
 .dry-run-control span {
@@ -537,7 +471,7 @@ onMounted(() => {
 }
 
 .agent-console.with-context {
-  grid-template-columns: minmax(290px, 330px) minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
 }
 
 .agent-context {
@@ -587,13 +521,13 @@ onMounted(() => {
 .messages {
   min-height: 0;
   overflow: auto;
-  padding: 4px 4px 0;
+  padding: 8px 8px 0;
 }
 
 .empty-hint {
   width: min(100%, 560px);
-  margin: 72px auto 0;
-  padding: 28px;
+  margin: 48px auto 0;
+  padding: 24px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-lg);
   color: var(--app-muted);
@@ -612,7 +546,7 @@ onMounted(() => {
 }
 
 .empty-hint h3 {
-  margin: 14px 0 0;
+  margin: 16px 0 0;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
   font-size: 20px;
@@ -635,7 +569,7 @@ onMounted(() => {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  margin-top: 18px;
+  margin-top: 24px;
 }
 
 .prompt-suggestions button {
@@ -660,7 +594,7 @@ onMounted(() => {
 
 .message {
   display: flex;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   animation: msgIn 0.3s ease-out;
 }
 
@@ -675,7 +609,7 @@ onMounted(() => {
 
 .bubble {
   max-width: min(800px, 88%);
-  padding: 13px 16px;
+  padding: 16px 24px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background:
@@ -720,7 +654,7 @@ onMounted(() => {
 
 .bubble :deep(pre) {
   background: var(--app-code-bg);
-  padding: 10px 14px;
+  padding: 16px;
   border-radius: var(--app-radius);
   overflow-x: auto;
   font-size: 13px;
@@ -781,22 +715,22 @@ onMounted(() => {
 .refs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 8px;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--app-border-soft);
 }
 
 .tool-calls {
   display: grid;
   gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--app-border-soft);
 }
 
 .tool-call {
-  padding: 10px;
+  padding: 16px;
   border-radius: var(--app-radius);
   border: 1px solid var(--app-border-soft);
   background: var(--app-code-bg);
@@ -805,8 +739,8 @@ onMounted(() => {
 .tool-call div {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .tool-call strong {
@@ -831,9 +765,9 @@ onMounted(() => {
 .runtime-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 8px;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--app-border-soft);
 }
 
@@ -849,28 +783,28 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 120px;
   align-items: stretch;
-  gap: 10px;
-  padding-top: 14px;
+  gap: 16px;
+  padding-top: 16px;
   border-top: 1px solid var(--app-border-soft);
 }
 
 .composer.with-run-control {
-  grid-template-columns: 1fr minmax(150px, 180px) 120px;
+  grid-template-columns: 1fr 184px 120px;
 }
 
 .composer :deep(.el-textarea__inner) {
-  min-height: 84px !important;
+  min-height: 72px !important;
   resize: none;
 }
 
 .composer .el-button {
-  min-height: 84px;
+  min-height: 72px;
 }
 
 .composer-run-control {
   justify-content: center;
-  min-height: 84px;
-  padding: 8px 10px;
+  min-height: 72px;
+  padding: 8px 16px;
 }
 
 .composer-run-control span {
@@ -890,20 +824,20 @@ onMounted(() => {
 
 .confirm-dialog {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 14px;
-  width: min(440px, 100%);
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 16px;
+  width: 448px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background: var(--app-surface);
   box-shadow: var(--app-shadow-lg);
-  padding: 20px;
+  padding: 24px;
 }
 
 .confirm-mark {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--app-warning) 42%, var(--app-border));
   border-radius: var(--app-radius);
@@ -933,15 +867,15 @@ onMounted(() => {
   grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding-top: 6px;
+  gap: 8px;
+  padding-top: 8px;
 }
 
 .confirm-button {
   min-height: 38px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
-  padding: 0 14px;
+  padding: 0 16px;
   color: var(--app-text);
   background: var(--app-surface-raised);
   font: inherit;
@@ -989,53 +923,4 @@ onMounted(() => {
   transform: translateY(8px) scale(0.98);
 }
 
-@media (max-width: 900px) {
-  .chat-page,
-  .agent-console {
-    height: auto;
-    overflow: visible;
-  }
-
-  .chat-hero {
-    align-items: stretch;
-    flex-direction: column;
-    min-height: auto;
-    padding: 16px;
-  }
-
-  .chat-actions {
-    justify-content: flex-start;
-  }
-
-  .agent-console.with-context {
-    grid-template-columns: 1fr;
-  }
-
-  .agent-context {
-    position: static;
-    min-height: auto;
-    max-height: none;
-  }
-
-  .composer {
-    grid-template-columns: 1fr;
-  }
-
-  .composer.with-run-control {
-    grid-template-columns: 1fr;
-  }
-
-  .composer .el-button {
-    min-height: 42px;
-  }
-
-  .composer-run-control {
-    justify-content: space-between;
-    min-height: 44px;
-  }
-
-  .bubble {
-    max-width: 100%;
-  }
-}
 </style>

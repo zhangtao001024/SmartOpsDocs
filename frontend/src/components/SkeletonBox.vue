@@ -21,7 +21,7 @@ defineProps({
   background: var(--app-surface);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .skeleton-line {

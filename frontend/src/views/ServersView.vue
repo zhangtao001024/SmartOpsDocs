@@ -798,7 +798,7 @@ onBeforeUnmount(() => {
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .overview-section h4 {
@@ -808,9 +808,9 @@ onBeforeUnmount(() => {
 
 .command-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .quick-commands,
@@ -819,7 +819,7 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .file-toolbar .el-input {
@@ -833,12 +833,6 @@ onBeforeUnmount(() => {
 }
 
 .command-output {
-  min-height: 260px;
-}
-
-@media (max-width: 800px) {
-  .overview-grid {
-    grid-template-columns: 1fr;
-  }
+  min-height: 264px;
 }
 </style>

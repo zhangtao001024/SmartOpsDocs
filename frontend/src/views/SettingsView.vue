@@ -426,16 +426,26 @@ onMounted(load)
 </script>
 
 <style scoped>
+.console-page {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 16px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .settings-card {
   display: grid;
   align-content: start;
   gap: 16px;
+  grid-column: span 3;
+  min-height: 0;
+  padding: 16px;
 }
 
 .settings-card-head {
@@ -443,13 +453,18 @@ onMounted(load)
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 14px;
+  min-width: 0;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--app-border-soft);
+}
+
+.settings-card-head > div:first-child {
+  min-width: 0;
 }
 
 .settings-card-head span {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   color: var(--app-muted);
   font-size: 11px;
   font-weight: 760;
@@ -460,6 +475,8 @@ onMounted(load)
   margin: 0;
   color: var(--app-text-heading);
   font-size: 17px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .settings-card-actions {
@@ -468,6 +485,7 @@ onMounted(load)
   justify-content: flex-end;
   gap: 8px;
   flex-wrap: wrap;
+  flex: 0 0 auto;
 }
 
 .settings-card-actions .el-button {
@@ -475,13 +493,27 @@ onMounted(load)
   padding: 0 10px;
 }
 
+.settings-card :deep(.el-form-item) {
+  margin-bottom: 12px;
+}
+
+.settings-card :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
+}
+
+.settings-card :deep(.el-form-item__label) {
+  color: var(--app-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .test-result {
   display: grid;
-  gap: 4px;
-  min-height: 58px;
+  gap: 8px;
+  min-height: 56px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
-  padding: 10px 12px;
+  padding: 12px;
   color: var(--app-muted);
   background: var(--app-surface-soft);
   font-size: 12px;
@@ -530,19 +562,48 @@ onMounted(load)
 }
 
 .agent-runtime-card {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
+  align-items: start;
   background:
     linear-gradient(90deg, var(--app-surface), var(--app-primary-softer) 72%, color-mix(in srgb, var(--app-accent-soft) 44%, transparent));
+}
+
+.agent-runtime-card .settings-card-head {
+  grid-column: 1 / -1;
+}
+
+.agent-runtime-card :deep(.el-form) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+  min-width: 0;
+}
+
+.agent-runtime-card :deep(.el-form-item) {
+  min-width: 0;
+}
+
+.agent-runtime-card :deep(.el-form-item:nth-child(2)),
+.agent-runtime-card :deep(.el-form-item:nth-child(3)),
+.agent-runtime-card :deep(.el-form-item:nth-child(5)) {
+  grid-column: 1 / -1;
 }
 
 .runtime-status-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  align-self: stretch;
+  padding: 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-surface-raised) 62%, transparent);
 }
 
 .runtime-status-grid > div {
   min-width: 0;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background: color-mix(in srgb, var(--app-surface-raised) 72%, transparent);
@@ -550,7 +611,7 @@ onMounted(load)
 
 .runtime-status-grid span {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
   color: var(--app-muted);
   font-size: 11px;
   font-weight: 760;
@@ -579,8 +640,8 @@ onMounted(load)
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  min-height: 42px;
-  padding: 10px 12px;
+  min-height: 40px;
+  padding: 8px 12px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background: var(--app-surface-soft);
@@ -594,6 +655,7 @@ onMounted(load)
 
 .agent-skills-inline {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 8px;
   width: 100%;
 }
@@ -602,18 +664,19 @@ onMounted(load)
   display: flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 
 .skill-preference-editor .el-input {
-  max-width: 360px;
+  min-width: 0;
 }
 
 .settings-note {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   margin-top: 0;
-  padding: 12px 14px;
+  padding: 12px 16px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   color: var(--app-muted);
@@ -625,28 +688,4 @@ onMounted(load)
   color: var(--app-text-heading);
 }
 
-@media (max-width: 900px) {
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .runtime-status-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .skill-preference-editor {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .skill-preference-editor .el-input {
-    max-width: none;
-  }
-}
-
-@media (min-width: 901px) and (max-width: 1280px) {
-  .settings-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 </style>

@@ -31,16 +31,16 @@ function colWidth(i) {
 
 .skeleton-header {
   display: flex;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 16px;
+  padding: 16px;
   border-bottom: 1px solid var(--app-border-soft);
   background: var(--app-surface-soft);
 }
 
 .skeleton-row {
   display: flex;
-  gap: 12px;
-  padding: 10px 16px;
+  gap: 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--app-border-soft);
 }
 

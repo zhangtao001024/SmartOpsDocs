@@ -985,7 +985,11 @@ onBeforeUnmount(disposeContainerShell)
 }
 
 .docker-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
   padding: 16px;
+  overflow: hidden;
 }
 
 .docker-row-actions {
@@ -995,15 +999,29 @@ onBeforeUnmount(disposeContainerShell)
 .docker-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 12px 0 16px;
+  gap: 16px;
+  margin: 8px 0 16px;
+}
+
+.docker-panel :deep(.el-tabs) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+
+.docker-panel :deep(.el-tabs__content),
+.docker-panel :deep(.el-tab-pane) {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
 }
 
 .container-shell-toolbar {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .shell-select {
@@ -1020,13 +1038,13 @@ onBeforeUnmount(disposeContainerShell)
 .compose-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .compose-meta-item {
   min-width: 0;
-  padding: 12px;
+  padding: 16px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background: var(--app-surface-soft);
@@ -1045,7 +1063,7 @@ onBeforeUnmount(disposeContainerShell)
 
 .compose-meta-item strong {
   overflow: hidden;
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--app-text-heading);
   font-family: var(--app-font-mono);
   font-size: 13px;
@@ -1059,7 +1077,7 @@ onBeforeUnmount(disposeContainerShell)
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin: 12px 0;
+  margin: 16px 0;
 }
 
 .compose-toolbar .el-select {
@@ -1107,24 +1125,6 @@ onBeforeUnmount(disposeContainerShell)
 }
 
 .compose-containers {
-  margin-top: 12px;
-}
-
-@media (max-width: 1000px) {
-  .docker-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 640px) {
-  .docker-server-select,
-  .docker-tail-input,
-  .shell-select {
-    width: 100%;
-  }
-
-  .docker-summary {
-    grid-template-columns: 1fr;
-  }
+  margin-top: 16px;
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
-  <el-container class="layout" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
-    <el-aside :width="sidebarCollapsed ? '0px' : '248px'" class="sidebar">
+  <el-container class="layout">
+    <el-aside width="264px" class="sidebar">
       <div class="brand">
         <div class="brand-mark">SD</div>
         <div>
@@ -11,14 +11,14 @@
       <div class="nav-scroll">
       <el-menu :default-active="$route.path" router>
         <div class="nav-section-label">工作台</div>
-        <el-menu-item index="/"><el-icon><DataAnalysis /></el-icon><span>概览</span></el-menu-item>
-        <el-menu-item index="/servers"><el-icon><Monitor /></el-icon><span>服务器资产</span></el-menu-item>
-        <el-menu-item index="/docker"><el-icon><Box /></el-icon><span>Docker 管理</span></el-menu-item>
-        <el-menu-item index="/k8s"><el-icon><Connection /></el-icon><span>Kubernetes</span></el-menu-item>
+        <el-menu-item index="/"><el-icon><TrendCharts /></el-icon><span>概览</span></el-menu-item>
+        <el-menu-item index="/servers"><el-icon><Management /></el-icon><span>服务器资产</span></el-menu-item>
+        <el-menu-item index="/docker"><el-icon><Platform /></el-icon><span>Docker 管理</span></el-menu-item>
+        <el-menu-item index="/k8s"><el-icon><Guide /></el-icon><span>Kubernetes</span></el-menu-item>
         <div class="nav-section-label">知识与 AI</div>
-        <el-menu-item index="/documents"><el-icon><Document /></el-icon><span>知识库文档</span></el-menu-item>
-        <el-menu-item index="/chat"><el-icon><ChatDotRound /></el-icon><span>AI 助手</span></el-menu-item>
-        <el-menu-item index="/settings"><el-icon><Setting /></el-icon><span>模型设置</span></el-menu-item>
+        <el-menu-item index="/documents"><el-icon><Reading /></el-icon><span>知识库文档</span></el-menu-item>
+        <el-menu-item index="/chat"><el-icon><MessageBox /></el-icon><span>AI 助手</span></el-menu-item>
+        <el-menu-item index="/settings"><el-icon><SetUp /></el-icon><span>模型设置</span></el-menu-item>
       </el-menu>
       </div>
       <div class="sidebar-status" :class="'status-' + runtimeStatus">
@@ -32,7 +32,6 @@
     <el-container class="content-shell">
       <el-header>
         <div class="header-title">
-          <el-button class="sidebar-toggle" text :icon="sidebarCollapsed ? 'Expand' : 'Fold'" @click="sidebarCollapsed = !sidebarCollapsed" />
           <div>
             <span>{{ currentTitle }}</span>
             <small>{{ runtimeDetail }}</small>
@@ -61,15 +60,10 @@ import client from '../api/client'
 const router = useRouter()
 const route = useRoute()
 const { theme, toggleTheme } = useTheme()
-const sidebarCollapsed = ref(window.innerWidth < 900)
 const runtimeStatus = ref('checking')
 const runtimeCounts = ref(null)
 const runtimeIssues = ref([])
 let statusTimer = null
-
-function syncSidebar() {
-  sidebarCollapsed.value = window.innerWidth < 900
-}
 
 async function loadRuntimeStatus() {
   try {
@@ -85,13 +79,11 @@ async function loadRuntimeStatus() {
 }
 
 onMounted(() => {
-  window.addEventListener('resize', syncSidebar)
   loadRuntimeStatus()
   statusTimer = window.setInterval(loadRuntimeStatus, 30000)
 })
 
 onBeforeUnmount(() => {
-  window.removeEventListener('resize', syncSidebar)
   if (statusTimer) window.clearInterval(statusTimer)
 })
 
@@ -180,16 +172,16 @@ function logout() {
   display: flex;
   gap: 12px;
   align-items: center;
-  height: 82px;
-  padding: 0 18px;
+  height: 64px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--app-border-soft);
   white-space: nowrap;
 }
 
 .brand-mark {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--app-radius);
   color: #fff;
   background:
@@ -207,7 +199,7 @@ function logout() {
 .brand-name {
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 840;
   line-height: 1.2;
 }
@@ -225,11 +217,11 @@ function logout() {
 
 :deep(.el-menu) {
   border-right: 0;
-  padding: 16px 12px;
+  padding: 10px 12px;
 }
 
 .nav-section-label {
-  margin: 14px 10px 8px;
+  margin: 8px 10px 4px;
   color: var(--app-muted-soft);
   font-size: 11px;
   font-weight: 760;
@@ -238,23 +230,34 @@ function logout() {
 }
 
 :deep(.el-menu-item) {
-  height: 42px;
-  margin-bottom: 5px;
+  height: 36px;
+  margin-bottom: 4px;
   border-radius: var(--app-radius);
   color: var(--app-text-soft);
+  line-height: 36px;
   font-weight: 720;
   transition: background-color 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 
 :deep(.el-menu-item .el-icon) {
-  color: var(--app-muted);
-  transition: color 0.16s ease;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  border-radius: var(--app-radius-sm);
+  color: var(--app-primary);
+  background: color-mix(in srgb, var(--app-primary-softer) 72%, transparent);
+  transition: color 0.16s ease, background-color 0.16s ease, transform 0.16s ease;
 }
 
 :deep(.el-menu-item:hover) {
   background: var(--app-sidebar-item-hover);
   transform: translateX(2px);
   box-shadow: inset 0 0 0 1px var(--app-border-soft);
+}
+
+:deep(.el-menu-item:hover .el-icon) {
+  transform: scale(1.04);
+  background: var(--app-primary-soft);
 }
 
 :deep(.el-menu-item.is-active) {
@@ -265,15 +268,18 @@ function logout() {
 }
 
 :deep(.el-menu-item.is-active .el-icon) {
-  color: var(--app-primary);
+  color: #fff;
+  background:
+    linear-gradient(150deg, var(--app-primary), var(--app-primary-strong) 68%, var(--app-accent));
+  box-shadow: 0 8px 16px color-mix(in srgb, var(--app-primary) 18%, transparent);
 }
 
 .sidebar-status {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  margin: 12px;
-  padding: 13px;
+  margin: 8px 12px 12px;
+  padding: 8px 12px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background:
@@ -324,11 +330,6 @@ function logout() {
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--app-muted-soft) 14%, transparent);
 }
 
-.sidebar-toggle {
-  display: none;
-  font-size: 18px;
-}
-
 .el-header {
   position: sticky;
   top: 0;
@@ -336,7 +337,7 @@ function logout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
+  height: 56px;
   padding: 0 24px;
   border-bottom: 1px solid var(--app-header-border);
   background: var(--app-header-bg);
@@ -348,7 +349,7 @@ function logout() {
 .header-title {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   font-weight: 700;
 }
 
@@ -386,74 +387,10 @@ function logout() {
 
 .main-content {
   width: 100%;
-  height: calc(100dvh - 60px);
+  height: calc(100dvh - 56px);
   margin: 0;
-  padding: 16px 18px 22px;
+  padding: 16px;
   min-height: 0;
-  overflow: auto;
-}
-
-/* ---- Responsive ---- */
-@media (max-width: 900px) {
-  .layout {
-    display: block;
-    height: auto;
-    overflow: visible;
-  }
-  .sidebar {
-    position: relative;
-    width: 100% !important;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--app-sidebar-border);
-  }
-  .layout.sidebar-collapsed .sidebar {
-    height: 0;
-    border-bottom: 0;
-  }
-  .sidebar:not([width="0px"]) {
-    width: 100% !important;
-  }
-  .brand {
-    height: 56px;
-  }
-  :deep(.el-menu) {
-    display: flex;
-    overflow-x: auto;
-    border-right: 0;
-  }
-  .nav-scroll {
-    overflow: visible;
-  }
-  .nav-section-label,
-  .sidebar-status {
-    display: none;
-  }
-  :deep(.el-menu-item) { flex: 0 0 auto; }
-  :deep(.el-menu-item:hover) {
-    transform: none;
-  }
-  .sidebar-toggle {
-    display: inline-flex;
-  }
-  .el-header {
-    height: 62px;
-    padding: 0 14px;
-  }
-  .header-actions {
-    gap: 4px;
-  }
-  .main-content {
-    height: auto;
-    padding: 18px 14px 24px;
-    overflow: visible;
-  }
-}
-
-@media (max-width: 560px) {
-  .header-title small,
-  .header-actions .el-tag {
-    display: none;
-  }
+  overflow: hidden;
 }
 </style>

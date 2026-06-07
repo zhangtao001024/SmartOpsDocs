@@ -15,6 +15,15 @@ html {
 
 /* ---- Light Theme (default) ---- */
 :root {
+  /* 8px desktop spacing scale */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-8: 64px;
+
   /* Surfaces */
   --app-bg: #eef1ed;
   --app-surface: #f9faf6;
@@ -65,8 +74,8 @@ html {
   --app-radius-lg: 8px;
 
   /* Typography */
-  --app-font-sans: "Aptos", "MiSans", "HarmonyOS Sans SC", "Segoe UI Variable", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --app-font-display: "Aptos Display", "MiSans", "HarmonyOS Sans SC", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --app-font-sans: "Geist", "Aptos", "MiSans", "HarmonyOS Sans SC", "Segoe UI Variable", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --app-font-display: "Geist", "Aptos Display", "MiSans", "HarmonyOS Sans SC", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   --app-font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Cascadia Code", monospace;
 
   /* Code & terminal */
@@ -220,7 +229,7 @@ body {
   background-size: auto, auto, auto, auto, auto;
   font-family: var(--app-font-sans);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s, color 0.3s;
@@ -268,8 +277,8 @@ a:hover {
 
 .skip-link {
   position: fixed;
-  top: 10px;
-  left: 10px;
+  top: var(--space-1);
+  left: var(--space-1);
   z-index: 50;
   padding: 8px 12px;
   border-radius: var(--app-radius);
@@ -321,9 +330,9 @@ a:hover {
   margin: 0;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 820;
-  line-height: 1.08;
+  line-height: 1.12;
   text-wrap: balance;
 }
 
@@ -332,7 +341,7 @@ a:hover {
 }
 
 .page-kicker {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-1);
   color: var(--app-accent);
   font-size: 12px;
   font-weight: 800;
@@ -342,24 +351,28 @@ a:hover {
 
 .page-subtitle {
   max-width: 58ch;
-  margin: 7px 0 0;
+  margin: var(--space-1) 0 0;
   color: var(--app-muted);
-  font-size: 13px;
-  line-height: 1.62;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .toolbar-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
   align-items: center;
   justify-content: flex-end;
   min-width: 0;
@@ -368,7 +381,7 @@ a:hover {
 .row-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   white-space: nowrap;
 }
 
@@ -382,8 +395,13 @@ a:hover {
     linear-gradient(90deg, rgba(12, 118, 111, 0.035), transparent 48%, rgba(168, 85, 30, 0.025)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
-  padding: 18px;
+  padding: var(--space-3);
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.panel:hover {
+  border-color: var(--app-border-strong);
+  box-shadow: var(--app-shadow-hover);
 }
 
 .panel::before {
@@ -408,7 +426,11 @@ html.dark .panel::before {
 
 .console-page {
   display: grid;
-  gap: 16px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .console-hero {
@@ -417,9 +439,10 @@ html.dark .panel::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  min-height: 124px;
-  padding: 20px 22px;
+  gap: var(--space-2);
+  height: 112px;
+  min-height: 112px;
+  padding: 20px var(--space-3);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
@@ -432,8 +455,8 @@ html.dark .panel::before {
 
 .console-hero::after {
   position: absolute;
-  right: 22px;
-  bottom: 14px;
+  right: var(--space-3);
+  bottom: var(--space-2);
   width: min(30%, 360px);
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
@@ -452,17 +475,19 @@ html.dark .console-hero {
 
 .console-status-strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .console-status-strip span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
   min-height: 28px;
-  padding: 5px 9px;
+  padding: 4px 10px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-muted);
@@ -470,6 +495,7 @@ html.dark .console-hero {
   box-shadow: var(--app-shadow-xs);
   font-size: 12px;
   font-weight: 650;
+  white-space: nowrap;
 }
 
 .console-status-strip strong {
@@ -478,20 +504,41 @@ html.dark .console-hero {
 }
 
 .table-panel {
-  padding: 14px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  padding: var(--space-3);
+  overflow: hidden;
+}
+
+.table-panel > .el-table,
+.docker-panel > .el-tabs,
+.docker-panel .el-tab-pane {
+  min-height: 0;
+  height: 100%;
+}
+
+.table-panel > .el-table {
+  overflow: hidden;
+}
+
+.table-panel > .el-empty,
+.table-panel > .skeleton-table {
+  align-self: stretch;
+  min-height: 0;
 }
 
 .metric-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
 .metric-strip > div,
 .summary-card {
-  min-height: 104px;
-  padding: 15px;
+  min-height: 88px;
+  padding: var(--space-2);
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background:
@@ -504,12 +551,12 @@ html.dark .console-hero {
 
 .metric-strip > div {
   min-height: 72px;
-  padding: 12px 14px;
+  padding: var(--space-2);
 }
 
 .summary-card {
-  min-height: 104px;
-  padding: 15px;
+  min-height: 88px;
+  padding: var(--space-2);
 }
 
 .metric-strip span,
@@ -557,7 +604,7 @@ html.dark .console-hero {
   max-height: 520px;
   overflow: auto;
   margin: 0;
-  padding: 14px;
+  padding: var(--space-2);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--app-radius-md);
   color: var(--app-terminal-text);
@@ -580,6 +627,7 @@ html.dark .console-hero {
 .el-button {
   border-radius: var(--app-radius);
   font-weight: 700;
+  min-height: 32px;
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -619,13 +667,14 @@ html.dark .el-button--primary {
   border-radius: var(--app-radius);
   background: var(--app-surface-raised);
   box-shadow: 0 0 0 1px var(--app-border) inset, var(--app-shadow-sm);
-  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .el-input__wrapper:hover,
 .el-select__wrapper:hover,
 .el-textarea__inner:hover {
   box-shadow: 0 0 0 1px var(--app-border-strong) inset, var(--app-shadow-sm);
+  transform: translateY(-1px);
 }
 
 .el-input__wrapper.is-focus,
@@ -649,16 +698,16 @@ html.dark .el-button--primary {
 }
 
 .el-table .cell {
-  line-height: 1.45;
-  padding: 0 10px;
+  line-height: 1.5;
+  padding: 0 var(--space-2);
 }
 
 .el-table td.el-table__cell {
-  padding: 8px 0;
+  padding: 10px 0;
 }
 
 .el-table th.el-table__cell {
-  padding: 9px 0;
+  padding: 12px 0;
 }
 
 .el-table th.el-table__cell {
@@ -695,7 +744,7 @@ html.dark .el-button--primary {
 }
 
 .el-dialog__header {
-  padding-bottom: 12px;
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--app-border-soft);
 }
 
@@ -707,14 +756,16 @@ html.dark .el-button--primary {
 
 .el-drawer__header {
   margin-bottom: 0;
-  padding-bottom: 16px;
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--app-border-soft);
   color: var(--app-text-heading);
   font-weight: 760;
 }
 
 .el-tabs__item {
-  font-weight: 650;
+  height: 48px;
+  padding: 0 var(--space-2);
+  font-weight: 700;
 }
 
 .el-tabs__nav-wrap::after {
@@ -765,29 +816,29 @@ html.dark .el-button--primary {
   --el-empty-fill-color-3: var(--app-border-strong);
   --el-empty-fill-color-4: var(--app-muted-soft);
   --el-empty-fill-color-5: var(--app-muted);
-  padding: 42px 0;
+  padding: var(--space-5) 0;
 }
 
 .el-overlay-message-box {
   display: grid !important;
   place-items: center !important;
-  padding: 24px;
+  padding: var(--space-3);
   background: color-mix(in srgb, #07100c 48%, transparent);
   backdrop-filter: blur(5px);
 }
 
 .el-message-box {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 14px;
-  width: min(440px, calc(100vw - 32px)) !important;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: var(--space-2);
+  width: 448px !important;
   max-width: none;
   margin: 0 !important;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background: var(--app-surface);
   box-shadow: var(--app-shadow-lg);
-  padding: 20px;
+  padding: var(--space-3);
 }
 
 .el-message-box::before {
@@ -795,8 +846,8 @@ html.dark .el-button--primary {
   display: grid;
   grid-column: 1;
   grid-row: 1 / span 2;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--app-warning) 42%, var(--app-border));
   border-radius: var(--app-radius);
@@ -853,21 +904,21 @@ html.dark .el-button--primary {
   grid-column: 1 / -1;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 6px 0 0;
+  gap: var(--space-1);
+  padding: var(--space-1) 0 0;
 }
 
 .el-message-box__btns .el-button {
   min-height: 38px;
   margin-left: 0 !important;
-  padding: 0 14px;
+  padding: 0 var(--space-2);
   font-size: 13px;
   font-weight: 760;
 }
 
 /* ---- xterm.js ---- */
 .xterm {
-  padding: 8px;
+  padding: var(--space-1);
   height: 100%;
 }
 
@@ -887,63 +938,4 @@ html.dark .el-button--primary {
 
 .el-table.is-scrolling-right::after {
   opacity: 1;
-}
-
-/* ---- Responsive ---- */
-@media (max-width: 900px) {
-  .toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .toolbar-actions {
-    align-items: stretch;
-    justify-content: flex-start;
-  }
-
-  .toolbar-actions > * {
-    flex: 1 1 auto;
-  }
-
-  .row-actions {
-    flex-wrap: wrap;
-  }
-
-  .panel {
-    padding: 12px;
-  }
-
-  .console-hero {
-    align-items: stretch;
-    flex-direction: column;
-    min-height: auto;
-    padding: 16px;
-  }
-
-  .console-hero::after {
-    display: none;
-  }
-
-  .el-dialog {
-    width: calc(100vw - 24px) !important;
-  }
-
-  /* Touch-friendly tap targets */
-  .el-button {
-    min-height: 40px;
-  }
-
-  .el-menu-item {
-    min-height: 44px;
-  }
-
-  /* Table scroll affordance on mobile */
-  .el-table {
-    font-size: 13px;
-  }
-
-  .page-title {
-    font-size: 23px;
-  }
 }
