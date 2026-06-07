@@ -53,6 +53,66 @@ def answer_question(db: Session, project: str, question: str, session_id: str) -
         f"用户: {item.question}\n助手: {(item.answer or '')[:800]}"
         for item in history
     )
+    mode = "local-openclaw"
+
+    try:
+        from app.services.agent_service import _call_openclaw_runtime, _resolve_agent_runtime
+
+        runtime = _resolve_agent_runtime(db)
+        if runtime.get("runtime") == "openclaw":
+            payload = {
+                "agent": runtime.get("agent") or "main",
+                "project": project,
+                "session_id": session_id,
+                "goal": question,
+                "response_format": "knowledge_agent_answer",
+                "openclaw_timeout": 120,
+                "history": history_text or "无",
+                "context": {
+                    "question": question,
+                    "project": project,
+                    "knowledge_context": context or "无匹配片段",
+                    "references": references,
+                    "answer_policy": [
+                        "只基于 SmartOpsDocs 提供的知识库片段和当前会话历史回答。",
+                        "如果知识库没有证据，直接说明缺少依据，并给出下一步检索建议。",
+                        "回答末尾列出引用来源编号。",
+                    ],
+                },
+                "tool_calls": [],
+                "references": references,
+                "policy": {
+                    "source": "SmartOpsDocs knowledge agent",
+                    "external_data_is_untrusted": True,
+                    "do_not_fabricate": True,
+                },
+            }
+            answer, mode = _call_openclaw_runtime(runtime, payload)
+    except Exception as exc:
+        answer = f"OpenClaw 知识库智能体调用失败: {exc}\n\n已检索到的上下文片段:\n{context or '无匹配片段'}"
+        mode = "local-openclaw-fallback"
+        history = ChatHistory(
+            session_id=session_id,
+            project=project,
+            question=question,
+            answer=answer,
+            references=json.dumps(references, ensure_ascii=False),
+        )
+        db.add(history)
+        db.commit()
+        return {"answer": answer, "references": references, "mode": mode}
+    else:
+        if mode == "openclaw-gateway":
+            history = ChatHistory(
+                session_id=session_id,
+                project=project,
+                question=question,
+                answer=answer,
+                references=json.dumps(references, ensure_ascii=False),
+            )
+            db.add(history)
+            db.commit()
+            return {"answer": answer, "references": references, "mode": mode}
 
     if llm["api_key"]:
         try:
@@ -92,7 +152,7 @@ def answer_question(db: Session, project: str, question: str, session_id: str) -
     )
     db.add(history)
     db.commit()
-    return {"answer": answer, "references": references}
+    return {"answer": answer, "references": references, "mode": mode}
 
 
 def optimize_document(db: Session, document_id: int, instruction: str | None = None) -> dict:

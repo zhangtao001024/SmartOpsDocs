@@ -70,4 +70,6 @@ def test_documents_and_knowledge_tree_filter_by_query_and_status():
     assert [row.title for row in document_rows] == ["K8s Runbook"]
     assert len(tree_rows) == 1
     assert tree_rows[0]["title"] == "K8s Runbook"
+    assert tree_rows[0]["source_kind"] == "markdown"
     assert tree_rows[0]["chunk_count"] == 1
+    assert tree_rows[0]["updated_at"] is not None

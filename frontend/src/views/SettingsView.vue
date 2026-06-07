@@ -4,11 +4,13 @@
       <div class="page-heading">
         <p class="page-kicker">Model runtime</p>
         <h2 class="page-title">模型设置</h2>
-        <p class="page-subtitle">分别配置助手问答、知识库优化和网页拉取使用的模型入口，未填写 Key 时回退到环境变量。</p>
+        <p class="page-subtitle">分别配置助手问答、知识库优化、网页拉取和向量检索使用的模型入口，未填写 Key 时回退到环境变量。</p>
         <div class="console-status-strip">
-          <span><strong>{{ apiKeyCount }}/3</strong> 已填 Key</span>
+          <span><strong>{{ apiKeyCount }}/4</strong> 已填 Key</span>
           <span><strong>{{ form.chat.model || '-' }}</strong> 助手模型</span>
+          <span><strong>{{ form.embedding.model || '-' }}</strong> 向量模型</span>
           <span><strong>{{ agentRuntimeLabel }}</strong> Agent Runtime</span>
+          <span><strong>{{ form.agent.web_skills?.length || 0 }}</strong> Web Skills</span>
           <span><strong>{{ form.optimize.vision_model || '文本模型' }}</strong> 视觉解析</span>
         </div>
       </div>
@@ -103,11 +105,39 @@
         </div>
       </div>
 
+      <div class="panel settings-card">
+        <div class="settings-card-head">
+          <div>
+            <span>Embedding</span>
+            <h3>向量检索模型</h3>
+          </div>
+          <div class="settings-card-actions">
+            <el-tag size="small" effect="plain" :type="form.embedding.api_key ? 'success' : 'info'">{{ form.embedding.api_key ? '独立 Key' : '环境变量' }}</el-tag>
+            <el-button size="small" :loading="testing.embedding" @click="testConfig('embedding')">测试</el-button>
+          </div>
+        </div>
+        <el-form :model="form.embedding" label-width="100px">
+          <el-form-item label="API Key">
+            <el-input v-model="form.embedding.api_key" type="password" show-password placeholder="sk-..." />
+          </el-form-item>
+          <el-form-item label="Base URL">
+            <el-input v-model="form.embedding.base_url" placeholder="https://api.openai.com/v1，留空用默认" />
+          </el-form-item>
+          <el-form-item label="模型">
+            <el-input v-model="form.embedding.model" placeholder="text-embedding-3-small" />
+          </el-form-item>
+        </el-form>
+        <div :class="['test-result', testResults.embedding.status]">
+          <strong>{{ testResultTitle('embedding') }}</strong>
+          <span>{{ testResultMessage('embedding') }}</span>
+        </div>
+      </div>
+
       <div class="panel settings-card agent-runtime-card">
         <div class="settings-card-head">
           <div>
-            <span>Agent</span>
-            <h3>OpenClaw Runtime</h3>
+            <span>Knowledge Agent</span>
+            <h3>知识库智能体</h3>
           </div>
           <div class="settings-card-actions">
             <el-tag size="small" effect="plain" :type="form.agent.runtime === 'openclaw' ? 'success' : 'info'">
@@ -117,25 +147,62 @@
           </div>
         </div>
         <el-form :model="form.agent" label-width="100px">
-          <el-form-item label="Runtime">
+          <el-form-item label="模式">
             <el-select v-model="form.agent.runtime">
-              <el-option label="本地 OpenClaw 兼容" value="local-openclaw" />
-              <el-option label="OpenClaw 本机 Agent" value="openclaw" />
+              <el-option label="内置知识库问答" value="local-openclaw" />
+              <el-option label="OpenClaw Gateway 智能体" value="openclaw" />
             </el-select>
           </el-form-item>
-          <el-form-item label="Endpoint">
-            <el-input v-model="form.agent.endpoint" placeholder="留空使用本机 openclaw agent；或填完整 HTTP URL" />
+          <el-form-item label="Gateway URL">
+            <el-input v-model="form.agent.endpoint" placeholder="例如 http://host.docker.internal:3000/api/agent/run" />
           </el-form-item>
           <el-form-item label="API Key">
-            <el-input v-model="form.agent.api_key" type="password" show-password placeholder="HTTP Endpoint Bearer Token，可选" />
+            <el-input v-model="form.agent.api_key" type="password" show-password placeholder="Gateway Bearer Token，可选" />
           </el-form-item>
-          <el-form-item label="Agent">
+          <el-form-item label="Agent ID">
             <el-input v-model="form.agent.agent" placeholder="main" />
           </el-form-item>
+          <el-form-item label="能力偏好">
+            <div class="agent-skills-inline">
+              <div class="selected-skills">
+                <template v-if="form.agent.web_skills?.length">
+                  <el-tag
+                    v-for="name in form.agent.web_skills"
+                    :key="name"
+                    size="small"
+                    closable
+                    @close="removeSkill(name)"
+                  >
+                    {{ name }}
+                  </el-tag>
+                </template>
+                <strong v-else>按 OpenClaw Agent 默认能力执行</strong>
+              </div>
+              <div class="skill-preference-editor">
+                <el-input
+                  v-model="skillDraft"
+                  placeholder="例如 browser-automation"
+                  clearable
+                  @keyup.enter="addSkillPreference"
+                />
+                <el-button icon="Plus" @click="addSkillPreference" :disabled="!skillDraft.trim()">添加</el-button>
+              </div>
+            </div>
+          </el-form-item>
         </el-form>
-        <div :class="['test-result', testResults.agent.status]">
-          <strong>{{ testResultTitle('agent') }}</strong>
-          <span>{{ testResultMessage('agent') }}</span>
+        <div class="runtime-status-grid" v-loading="statusLoading">
+          <div>
+            <span>Gateway</span>
+            <strong :class="openclawStatus?.gateway?.reachable ? 'status-ok' : 'status-warn'">{{ openclawGatewayLabel }}</strong>
+          </div>
+          <div>
+            <span>Mode</span>
+            <strong>{{ openclawModeLabel }}</strong>
+          </div>
+          <div>
+            <span>Agent</span>
+            <strong>{{ openclawStatus.default_agent_id || form.agent.agent || '-' }}</strong>
+          </div>
         </div>
       </div>
     </div>
@@ -157,24 +224,50 @@ const form = reactive({
   chat: { api_key: '', base_url: '', model: 'gpt-4o-mini', vision_model: '' },
   optimize: { api_key: '', base_url: '', model: 'gpt-4o-mini', vision_model: '' },
   pull: { api_key: '', base_url: '', model: 'gpt-4o-mini', vision_model: '' },
-  agent: { runtime: 'local-openclaw', endpoint: '', api_key: '', agent: 'main' },
+  embedding: { api_key: '', base_url: '', model: 'text-embedding-3-small', vision_model: '' },
+  agent: { runtime: 'local-openclaw', endpoint: '', api_key: '', agent: 'main', web_skills: ['browser-automation'] },
 })
-const testing = reactive({ chat: false, optimize: false, pull: false, agent: false })
+const testing = reactive({ chat: false, optimize: false, pull: false, embedding: false, agent: false })
 const testResults = reactive({
   chat: { status: 'idle', message: '尚未验证当前配置', latency_ms: null },
   optimize: { status: 'idle', message: '尚未验证当前配置', latency_ms: null },
   pull: { status: 'idle', message: '尚未验证当前配置', latency_ms: null },
+  embedding: { status: 'idle', message: '尚未验证当前配置', latency_ms: null },
   agent: { status: 'idle', message: '尚未验证当前配置', latency_ms: null },
 })
+const statusLoading = ref(false)
+const openclawStatus = reactive({
+  ok: false,
+  runtime_version: '',
+  default_agent_id: '',
+  gateway: { reachable: false, url: '', latency_ms: null, error: '' },
+  gateway_service: { runtime_short: '' },
+})
+const skillDraft = ref('')
 
 const apiKeyCount = computed(() => {
-  return [form.chat.api_key, form.optimize.api_key, form.pull.api_key]
+  return [form.chat.api_key, form.optimize.api_key, form.pull.api_key, form.embedding.api_key]
     .filter((value) => value && value.trim())
     .length
 })
 
 const agentRuntimeLabel = computed(() => {
-  return form.agent.runtime === 'openclaw' ? 'OpenClaw' : 'Local'
+  return form.agent.runtime === 'openclaw' ? 'Gateway Agent' : 'Built-in'
+})
+
+const openclawGatewayLabel = computed(() => {
+  if (form.agent.runtime !== 'openclaw') return '内置模式'
+  if (!openclawStatus.ok) return '未连接'
+  if (openclawStatus.gateway?.reachable) {
+    const latency = openclawStatus.gateway.latency_ms ? ` ${openclawStatus.gateway.latency_ms}ms` : ''
+    return `可达${latency}`
+  }
+  return '不可达'
+})
+
+const openclawModeLabel = computed(() => {
+  if (form.agent.runtime !== 'openclaw') return 'Built-in'
+  return openclawStatus.gateway_service?.runtime_short || 'Gateway'
 })
 
 function testResultTitle(scope) {
@@ -199,22 +292,33 @@ async function load() {
     Object.assign(form.chat, resp.data.chat)
     Object.assign(form.optimize, resp.data.optimize)
     Object.assign(form.pull, resp.data.pull)
-    if (resp.data.agent) Object.assign(form.agent, resp.data.agent)
+    if (resp.data.embedding) Object.assign(form.embedding, resp.data.embedding)
+    if (resp.data.agent) {
+      Object.assign(form.agent, resp.data.agent)
+      form.agent.web_skills = normalizeWebSkills(resp.data.agent.web_skills)
+    }
   } catch (e) { /* ignore */ }
+  await refreshOpenClaw()
 }
 
 async function save() {
   if (form.agent.runtime === 'openclaw') {
     const endpoint = form.agent.endpoint.trim()
-    if (endpoint && !/^https?:\/\//.test(endpoint)) {
-      ElMessage.error('OpenClaw Endpoint 必须是 http:// 或 https:// 开头的完整 URL')
+    if (!endpoint) {
+      ElMessage.error('OpenClaw Gateway URL 不能为空')
+      return
+    }
+    if (!/^https?:\/\//.test(endpoint)) {
+      ElMessage.error('OpenClaw Gateway URL 必须是 http:// 或 https:// 开头的完整 URL')
       return
     }
   }
   saving.value = true
   try {
-    await client.put('/api/settings', { chat: form.chat, optimize: form.optimize, pull: form.pull, agent: form.agent })
+    form.agent.web_skills = normalizeWebSkills(form.agent.web_skills)
+    await client.put('/api/settings', { chat: form.chat, optimize: form.optimize, pull: form.pull, embedding: form.embedding, agent: form.agent })
     ElMessage.success('模型配置已保存')
+    await refreshOpenClaw()
   } catch (e) {
     ElMessage.error(getApiErrorMessage(e, '保存失败'))
   } finally {
@@ -222,12 +326,77 @@ async function save() {
   }
 }
 
+function normalizeWebSkills(value) {
+  const raw = Array.isArray(value) ? value : []
+  return Array.from(new Set(raw.map((item) => String(item || '').trim()).filter(Boolean)))
+}
+
+function removeSkill(name) {
+  form.agent.web_skills = normalizeWebSkills(form.agent.web_skills).filter((item) => item !== name)
+}
+
+function addSkillPreference() {
+  const name = skillDraft.value.trim()
+  if (!name) return
+  const selected = normalizeWebSkills(form.agent.web_skills)
+  if (!/^[A-Za-z0-9_.-]{1,80}$/.test(name)) {
+    ElMessage.warning('能力偏好只能包含字母、数字、点、下划线和短横线')
+    return
+  }
+  if (!selected.includes(name)) {
+    form.agent.web_skills = [...selected, name]
+  }
+  skillDraft.value = ''
+}
+
+function markOpenClawGatewayReachable(latencyMs = null) {
+  Object.assign(openclawStatus, {
+    ok: true,
+    runtime_version: '',
+    default_agent_id: form.agent.agent || 'main',
+    gateway: {
+      reachable: true,
+      url: form.agent.endpoint.trim(),
+      latency_ms: latencyMs,
+      error: '',
+    },
+    gateway_service: { runtime_short: 'Gateway' },
+  })
+}
+
+async function loadOpenClawStatus() {
+  statusLoading.value = true
+  try {
+    const { data } = await client.get('/api/openclaw/status')
+    Object.assign(openclawStatus, data)
+  } catch (error) {
+    Object.assign(openclawStatus, {
+      ok: false,
+      runtime_version: '',
+      default_agent_id: '',
+      gateway: { reachable: false, url: '', latency_ms: null, error: getApiErrorMessage(error, '读取 OpenClaw 状态失败') },
+      gateway_service: { runtime_short: '' },
+    })
+  } finally {
+    statusLoading.value = false
+  }
+}
+
+async function refreshOpenClaw() {
+  await loadOpenClawStatus()
+}
+
 async function testConfig(scope) {
   if (scope === 'agent') {
     const endpoint = form.agent.endpoint.trim()
-    if (form.agent.runtime === 'openclaw' && endpoint && !/^https?:\/\//.test(endpoint)) {
-      testResults.agent = { status: 'error', message: 'OpenClaw Endpoint 必须是 http:// 或 https:// 开头的完整 URL', latency_ms: null }
-      ElMessage.error('OpenClaw Endpoint 必须是 http:// 或 https:// 开头的完整 URL')
+    if (form.agent.runtime === 'openclaw' && !endpoint) {
+      testResults.agent = { status: 'error', message: 'OpenClaw Gateway URL 不能为空', latency_ms: null }
+      ElMessage.error('OpenClaw Gateway URL 不能为空')
+      return
+    }
+    if (form.agent.runtime === 'openclaw' && !/^https?:\/\//.test(endpoint)) {
+      testResults.agent = { status: 'error', message: 'OpenClaw Gateway URL 必须是 http:// 或 https:// 开头的完整 URL', latency_ms: null }
+      ElMessage.error('OpenClaw Gateway URL 必须是 http:// 或 https:// 开头的完整 URL')
       return
     }
   }
@@ -236,10 +405,13 @@ async function testConfig(scope) {
   try {
     const { data } = await client.post('/api/settings/test', { scope, config: form[scope] })
     const status = data.level === 'warning' ? 'warning' : 'ok'
-    const message = data.message || '配置可用'
+    const message = scope === 'agent' ? 'OpenClaw Gateway 可用' : (data.message || '配置可用')
     testResults[scope] = { status, message, latency_ms: data.latency_ms || null }
     const toast = data.latency_ms ? `${message}（${data.latency_ms}ms）` : message
-    if (status === 'warning') ElMessage.warning(toast)
+    if (scope === 'agent') {
+      markOpenClawGatewayReachable(data.latency_ms || null)
+      ElMessage.success(toast)
+    } else if (status === 'warning') ElMessage.warning(toast)
     else ElMessage.success(toast)
   } catch (e) {
     const message = getApiErrorMessage(e, '验证失败')
@@ -362,6 +534,80 @@ onMounted(load)
     linear-gradient(90deg, var(--app-surface), var(--app-primary-softer) 72%, color-mix(in srgb, var(--app-accent-soft) 44%, transparent));
 }
 
+.runtime-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.runtime-status-grid > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-surface-raised) 72%, transparent);
+}
+
+.runtime-status-grid span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.runtime-status-grid strong {
+  overflow: hidden;
+  display: block;
+  color: var(--app-text-heading);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-ok {
+  color: var(--app-success) !important;
+}
+
+.status-warn {
+  color: var(--app-warning) !important;
+}
+
+.selected-skills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+  background: var(--app-surface-soft);
+}
+
+.selected-skills strong {
+  color: var(--app-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.agent-skills-inline {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.skill-preference-editor {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.skill-preference-editor .el-input {
+  max-width: 360px;
+}
+
 .settings-note {
   display: flex;
   align-items: center;
@@ -382,6 +628,19 @@ onMounted(load)
 @media (max-width: 900px) {
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .runtime-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .skill-preference-editor {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .skill-preference-editor .el-input {
+    max-width: none;
   }
 }
 

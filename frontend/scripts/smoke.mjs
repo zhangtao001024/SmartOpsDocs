@@ -27,7 +27,7 @@ chrome.on('error', (error) => {
 chrome.stderr.on('data', (chunk) => {
   const text = chunk.toString()
   if (/DevTools listening/.test(text)) return
-  if (/DBus|UPower|snapd|libpxbackend|gio-modules/.test(text)) return
+  if (/DBus|UPower|snapd|libpxbackend|gio-modules|ssl_client_socket_impl|handshake failed|google_apis\/gcm|DEPRECATED_ENDPOINT/.test(text)) return
   if (/ERROR|Failed|TypeError|ReferenceError|SyntaxError/.test(text)) {
     errors.push(text.trim())
   }

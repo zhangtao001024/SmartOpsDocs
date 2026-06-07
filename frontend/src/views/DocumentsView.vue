@@ -14,6 +14,13 @@
       <div class="toolbar-actions">
         <el-input v-model="project" placeholder="项目" clearable />
         <el-input v-model="documentQuery" placeholder="搜索文档标题 / 状态" clearable />
+        <el-select v-model="statusFilter" placeholder="状态" clearable class="status-filter">
+          <el-option label="完成" value="completed" />
+          <el-option label="解析中" value="parsing" />
+          <el-option label="待解析" value="uploaded" />
+          <el-option label="草稿" value="draft" />
+          <el-option label="失败" value="failed" />
+        </el-select>
         <el-button icon="Link" type="primary" @click="openPullWeb">拉取网页</el-button>
         <el-button icon="Refresh" @click="load">刷新</el-button>
       </div>
@@ -59,7 +66,11 @@
             type="button"
             @click="openDocument(doc)"
           >
-            <span class="doc-title">{{ doc.title }}</span>
+            <span :class="['doc-source-mark', 'source-' + sourceKind(doc)]">{{ sourceShortLabel(doc) }}</span>
+            <span class="doc-copy">
+              <span class="doc-title" :title="sourceHint(doc) || doc.title">{{ displayTitle(doc) }}</span>
+              <span class="doc-subtitle">{{ documentSubtitle(doc) }}</span>
+            </span>
             <span class="doc-meta">
               <el-tag :type="statusType(doc.status)" size="small" effect="plain">{{ statusLabel(doc.status) }}</el-tag>
               <span>{{ doc.chunk_count || 0 }} 片段</span>
@@ -74,9 +85,11 @@
             <div class="reader-title-block">
               <div class="reader-kicker">
                 <el-tag :type="statusType(detail.status)" size="small" effect="plain">{{ statusLabel(detail.status) }}</el-tag>
+                <span class="reader-source-kind">{{ sourceLabel(detail) }}</span>
                 <span>{{ detail.project }}</span>
               </div>
-              <h1>{{ detail.title }}</h1>
+              <h1>{{ displayTitle(detail) }}</h1>
+              <p v-if="sourceHint(detail)" class="reader-source-hint">{{ sourceHint(detail) }}</p>
               <div class="reader-meta">
                 <span>{{ detail.chunks?.length || 0 }} 片段</span>
                 <span>{{ documentStats.words }} 字</span>
@@ -150,6 +163,9 @@
             </template>
           </el-input>
           <div class="search-results">
+            <p v-if="searchText.trim() && !searching && searchResults.length === 0" class="aside-empty search-empty">
+              没有匹配的知识片段
+            </p>
             <button
               v-for="item in searchResults"
               :key="item.chunk_id"
@@ -157,7 +173,7 @@
               class="search-result"
               @click="openSearchResult(item)"
             >
-              <strong>{{ item.document_title }}</strong>
+              <strong>{{ displayTitle(item) }}</strong>
               <span>{{ item.preview }}</span>
             </button>
           </div>
@@ -269,6 +285,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import client, { getApiErrorMessage } from '../api/client'
 
@@ -277,6 +294,7 @@ marked.setOptions({ breaks: true })
 const route = useRoute()
 const project = ref('default')
 const documentQuery = ref('')
+const statusFilter = ref('')
 const documents = ref([])
 const loading = ref(false)
 const detail = ref(null)
@@ -329,7 +347,110 @@ const toc = computed(() => {
 
 function renderMd(text) {
   if (!text) return '<p class="muted">暂无解析内容</p>'
-  return marked.parse(text)
+  return DOMPurify.sanitize(marked.parse(text))
+}
+
+function cleanSourceText(value) {
+  let text = String(value || '').trim()
+  try {
+    text = decodeURIComponent(text)
+  } catch (_error) {
+    // Keep the original value when it is not URL-encoded text.
+  }
+  return text.replace(/\\/g, '/').replace(/\s+/g, ' ').trim()
+}
+
+function titleSource(value) {
+  if (value && typeof value === 'object') {
+    return value.title || value.document_title || value.source_hint || value.source || ''
+  }
+  return value
+}
+
+function displayTitle(value) {
+  const source = cleanSourceText(titleSource(value))
+  if (!source) return '未命名文档'
+  if (/^https?:\/\//i.test(source)) {
+    try {
+      const url = new URL(source)
+      const lastPart = url.pathname.split('/').filter(Boolean).pop() || url.hostname
+      const cleanPathTitle = cleanSourceText(lastPart)
+        .replace(/\.(html?|md|txt|pdf)$/i, '')
+        .replace(/[-_]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+      return cleanPathTitle || url.hostname.replace(/^www\./i, '')
+    } catch (_error) {
+      return source
+    }
+  }
+  const basename = source.split('/').filter(Boolean).pop() || source
+  return basename
+    .replace(/\.(docx?|pdf|md|txt)$/i, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim() || source
+}
+
+function sourceKind(doc) {
+  const kind = String(doc?.source_kind || '').trim()
+  if (kind) return kind
+  const title = cleanSourceText(doc?.title || '')
+  if (/^https?:\/\//i.test(title)) return 'web'
+  const suffix = title.toLowerCase().split('.').pop()
+  if (suffix === 'pdf') return 'pdf'
+  if (['doc', 'docx'].includes(suffix)) return 'word'
+  if (suffix === 'md') return 'markdown'
+  if (suffix === 'txt') return 'text'
+  if (doc?.status === 'draft') return 'draft'
+  return 'document'
+}
+
+function sourceLabel(doc) {
+  const labels = {
+    web: '网页',
+    word: 'Word',
+    pdf: 'PDF',
+    markdown: 'Markdown',
+    text: '文本',
+    draft: '草稿',
+    document: '文档',
+  }
+  return labels[sourceKind(doc)] || '文档'
+}
+
+function sourceShortLabel(doc) {
+  const labels = {
+    web: 'WEB',
+    word: 'DOC',
+    pdf: 'PDF',
+    markdown: 'MD',
+    text: 'TXT',
+    draft: 'DR',
+    document: 'DOC',
+  }
+  return labels[sourceKind(doc)] || 'DOC'
+}
+
+function formatDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+}
+
+function documentSubtitle(doc) {
+  return [sourceLabel(doc), formatDate(doc.updated_at || doc.created_at), doc.project]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+function sourceHint(doc) {
+  const titleRaw = cleanSourceText(titleSource(doc))
+  const hintRaw = cleanSourceText(doc?.source_hint || '')
+  if (hintRaw && hintRaw !== titleRaw) return hintRaw
+  if (titleRaw && titleRaw !== displayTitle(doc)) return titleRaw
+  return ''
 }
 
 function statusType(status) {
@@ -365,6 +486,7 @@ async function load() {
       params: {
         project: project.value || undefined,
         q: documentQuery.value.trim() || undefined,
+        status: statusFilter.value || undefined,
       }
     })).data
     const routeDocId = Number(route.query.doc || 0)
@@ -588,7 +710,7 @@ async function removeDoc(row) {
 async function confirmRemoveDoc(row) {
   try {
     await ElMessageBox.confirm(
-      `确定删除文档「${row.title}」？删除后会移除文档内容和检索片段。`,
+      `确定删除文档「${displayTitle(row)}」？删除后会移除文档内容和检索片段。`,
       '确认删除文档',
       {
         confirmButtonText: '删除文档',
@@ -613,7 +735,7 @@ watch(() => route.query.doc, () => {
 
 onMounted(load)
 
-watch([project, documentQuery], queueLoad)
+watch([project, documentQuery, statusFilter], queueLoad)
 
 onBeforeUnmount(() => {
   if (listTimer) window.clearTimeout(listTimer)
@@ -720,6 +842,10 @@ onBeforeUnmount(() => {
 
 .toolbar-actions .el-input {
   width: 180px;
+}
+
+.toolbar-actions .status-filter {
+  width: 128px;
 }
 
 .knowledge-shell {
@@ -854,17 +980,24 @@ onBeforeUnmount(() => {
 }
 
 .doc-item {
-  display: block;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-areas:
+    "mark copy"
+    "mark meta";
+  column-gap: 10px;
+  row-gap: 7px;
+  align-items: start;
   position: relative;
   width: 100%;
-  padding: 12px 12px 12px 14px;
-  border: 0;
+  padding: 12px;
+  border: 1px solid transparent;
   border-radius: var(--app-radius-md);
   color: var(--app-text-soft);
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
 .doc-item + .doc-item {
@@ -872,6 +1005,7 @@ onBeforeUnmount(() => {
 }
 
 .doc-item:hover {
+  border-color: var(--app-border-soft);
   background: var(--app-surface-hover);
   transform: translateX(2px);
 }
@@ -883,23 +1017,77 @@ onBeforeUnmount(() => {
   box-shadow: inset 3px 0 0 var(--app-primary), var(--app-shadow-xs);
 }
 
+.doc-source-mark {
+  grid-area: mark;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius);
+  color: var(--app-muted);
+  background: color-mix(in srgb, var(--app-surface-raised) 72%, transparent);
+  box-shadow: var(--app-shadow-xs);
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.doc-source-mark.source-web {
+  color: var(--app-primary);
+  background: var(--app-primary-softer);
+  border-color: var(--app-primary-border);
+}
+
+.doc-source-mark.source-pdf,
+.doc-source-mark.source-word {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+  border-color: color-mix(in srgb, var(--app-accent) 35%, var(--app-border));
+}
+
+.doc-source-mark.source-draft {
+  color: var(--app-warning);
+  background: var(--app-warning-soft);
+  border-color: color-mix(in srgb, var(--app-warning) 35%, var(--app-border));
+}
+
+.doc-copy {
+  grid-area: copy;
+  min-width: 0;
+}
+
 .doc-title {
   overflow: hidden;
   display: -webkit-box;
   color: var(--app-text-heading);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.45;
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 1.34;
+  overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
+.doc-subtitle {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--app-muted);
+  font-size: 11px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .doc-meta {
+  grid-area: meta;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin-top: 8px;
   color: var(--app-muted);
   font-size: 12px;
 }
@@ -925,13 +1113,14 @@ onBeforeUnmount(() => {
 }
 
 .reader-header h1 {
-  max-width: 24ch;
+  max-width: 28ch;
   margin: 0;
   color: var(--app-text-heading);
   font-family: var(--app-font-display);
   font-size: 40px;
   font-weight: 860;
   line-height: 1.08;
+  overflow-wrap: anywhere;
   text-wrap: balance;
 }
 
@@ -948,6 +1137,24 @@ onBeforeUnmount(() => {
 
 .reader-title-block {
   min-width: 0;
+}
+
+.reader-source-kind {
+  color: var(--app-primary);
+}
+
+.reader-source-hint {
+  display: -webkit-box;
+  max-width: min(720px, 100%);
+  overflow: hidden;
+  margin: 12px 0 0;
+  color: var(--app-muted);
+  font-family: var(--app-font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .reader-meta,
@@ -1405,6 +1612,10 @@ onBeforeUnmount(() => {
   }
 
   .toolbar-actions .el-input {
+    width: 100%;
+  }
+
+  .toolbar-actions .status-filter {
     width: 100%;
   }
 

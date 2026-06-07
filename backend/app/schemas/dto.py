@@ -140,6 +140,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     references: list[dict]
+    mode: str = "local-openclaw"
 
 
 class AgentRequest(BaseModel):

@@ -19,9 +19,17 @@ services:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       OPENAI_VISION_MODEL: ${OPENAI_VISION_MODEL:-gpt-4o-mini}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
       DOCX_VISION_MAX_IMAGES: ${DOCX_VISION_MAX_IMAGES:-20}
+      AGENT_RUNTIME: ${AGENT_RUNTIME:-local-openclaw}
+      OPENCLAW_ENDPOINT: ${OPENCLAW_ENDPOINT:-}
+      OPENCLAW_API_KEY: ${OPENCLAW_API_KEY:-}
+      OPENCLAW_AGENT: ${OPENCLAW_AGENT:-main}
+      OPENCLAW_WEB_SKILLS: ${OPENCLAW_WEB_SKILLS:-browser-automation}
     volumes:
       - smartopsdocs-data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     expose:
       - "8000"
     healthcheck:

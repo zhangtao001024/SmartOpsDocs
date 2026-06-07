@@ -1,10 +1,9 @@
 import json
-import shutil
-import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Callable
 from urllib import error as url_error
+from urllib import parse as url_parse
 from urllib import request as url_request
 
 from sqlalchemy.orm import Session
@@ -14,6 +13,7 @@ from app.core.config import get_settings
 from app.models.entities import AppSetting
 from app.services.ai_service import _recent_history, _resolve_llm, optimize_document
 from app.services.document_service import create_knowledge_draft, search_chunks
+from app.services.openclaw_service import normalize_skill_names
 from app.services.docker_service import (
     container_action,
     docker_dashboard,
@@ -352,9 +352,9 @@ def _local_agent_answer(goal: str, tool_calls: list[dict], references: list[dict
     return "\n".join(lines)
 
 
-def _resolve_agent_runtime(db: Session) -> dict[str, str]:
+def _resolve_agent_runtime(db: Session) -> dict[str, Any]:
     env = get_settings()
-    keys = ["agent_runtime", "openclaw_endpoint", "openclaw_api_key", "openclaw_agent"]
+    keys = ["agent_runtime", "openclaw_endpoint", "openclaw_api_key", "openclaw_agent", "openclaw_web_skills"]
     db_cfg = {}
     for row in db.query(AppSetting).filter(AppSetting.key.in_(keys)).all():
         db_cfg[row.key] = row.value
@@ -363,7 +363,36 @@ def _resolve_agent_runtime(db: Session) -> dict[str, str]:
         "endpoint": db_cfg.get("openclaw_endpoint") or env.openclaw_endpoint or "",
         "api_key": db_cfg.get("openclaw_api_key") or env.openclaw_api_key or "",
         "agent": db_cfg.get("openclaw_agent") or env.openclaw_agent,
+        "web_skills": normalize_skill_names(db_cfg.get("openclaw_web_skills") or getattr(env, "openclaw_web_skills", "browser-automation")),
     }
+
+
+def _openclaw_endpoint_candidates(endpoint: str) -> list[str]:
+    endpoint = endpoint.strip().rstrip("/")
+    parsed = url_parse.urlparse(endpoint)
+    if parsed.path and parsed.path != "/":
+        candidates = [endpoint]
+        if not parsed.path.endswith("/run"):
+            candidates.append(f"{endpoint}/run")
+        return candidates
+    return [
+        endpoint,
+        f"{endpoint}/api/agent/run",
+        f"{endpoint}/api/agent",
+        f"{endpoint}/agent/run",
+        f"{endpoint}/agent",
+        f"{endpoint}/run",
+    ]
+
+
+def _post_openclaw_endpoint(endpoint: str, runtime: dict[str, str], payload: dict[str, Any]) -> dict:
+    body = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if runtime["api_key"]:
+        headers["Authorization"] = f"Bearer {runtime['api_key']}"
+    req = url_request.Request(endpoint, data=body, headers=headers, method="POST")
+    with url_request.urlopen(req, timeout=90) as response:
+        return json.loads(response.read().decode("utf-8"))
 
 
 def _call_openclaw_endpoint(runtime: dict[str, str], payload: dict[str, Any]) -> str:
@@ -372,38 +401,41 @@ def _call_openclaw_endpoint(runtime: dict[str, str], payload: dict[str, Any]) ->
         raise RuntimeError("OpenClaw endpoint 未配置")
     if not endpoint.startswith(("http://", "https://")):
         raise RuntimeError("OpenClaw endpoint 必须是完整 URL，API key/token 请填写到 API Key 字段")
-    body = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
-    headers = {"Content-Type": "application/json"}
-    if runtime["api_key"]:
-        headers["Authorization"] = f"Bearer {runtime['api_key']}"
-    req = url_request.Request(endpoint, data=body, headers=headers, method="POST")
-    try:
-        with url_request.urlopen(req, timeout=90) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except url_error.URLError as exc:
-        raise RuntimeError(str(exc)) from exc
+    errors = []
+    candidates = _openclaw_endpoint_candidates(endpoint)
+    data = None
+    used_endpoint = ""
+    for candidate in candidates:
+        try:
+            data = _post_openclaw_endpoint(candidate, runtime, payload)
+            used_endpoint = candidate
+            break
+        except url_error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")[:300]
+            errors.append(f"{candidate}: HTTP {exc.code} {detail}".strip())
+            if exc.code not in {404, 405}:
+                break
+        except url_error.URLError as exc:
+            errors.append(f"{candidate}: {exc}")
+            break
+        except Exception as exc:
+            errors.append(f"{candidate}: {exc}")
+            break
+    if data is None:
+        raise RuntimeError("; ".join(errors) or "OpenClaw endpoint 调用失败")
+    answer = _extract_openclaw_cli_answer(data)
+    if answer:
+        return answer
     answer = data.get("answer") or data.get("content") or data.get("message")
     if not answer:
-        raise RuntimeError("OpenClaw 响应缺少 answer/content/message")
+        raise RuntimeError(f"OpenClaw 响应缺少 answer/content/message: {used_endpoint}")
     return str(answer)
 
 
-def _safe_openclaw_session_part(value: Any) -> str:
-    text = str(value or "default").strip()
-    safe = "".join(
-        ch if ch.isascii() and (ch.isalnum() or ch in "-_.") else "-"
-        for ch in text
-    ).strip("-")
-    return safe[:80] or "default"
-
-
-def _build_openclaw_cli_message(payload: dict[str, Any]) -> str:
-    return (
-        "你是 SmartOpsDocs 专用运维 Agent。请只基于工具结果、历史记录和知识库引用回答。"
-        "如果写操作被 dry-run 拦截，需要明确说明；知识库写入只能作为草稿建议。"
-        "下面是本次运维任务的结构化上下文，请用中文给出可执行、简洁的结论。\n\n"
-        f"{json.dumps(payload, ensure_ascii=False, default=str)}"
-    )
+def _call_openclaw_runtime(runtime: dict[str, str], payload: dict[str, Any]) -> tuple[str, str]:
+    if not runtime.get("endpoint"):
+        raise RuntimeError("OpenClaw Gateway URL 未配置")
+    return _call_openclaw_endpoint(runtime, payload), "openclaw-gateway"
 
 
 def _extract_openclaw_cli_answer(data: dict[str, Any]) -> str:
@@ -430,49 +462,6 @@ def _extract_openclaw_cli_answer(data: dict[str, Any]) -> str:
         if data.get(key):
             return str(data[key]).strip()
     return ""
-
-
-def _call_openclaw_cli(runtime: dict[str, str], payload: dict[str, Any]) -> str:
-    openclaw = shutil.which("openclaw") or "/usr/local/bin/openclaw"
-    agent = (runtime.get("agent") or "main").strip() or "main"
-    project = _safe_openclaw_session_part(payload.get("project"))
-    session_id = _safe_openclaw_session_part(payload.get("session_id"))
-    session_key = f"agent:{agent}:smartopsdocs-{project}-{session_id}"
-    cmd = [
-        openclaw,
-        "agent",
-        "--agent",
-        agent,
-        "--session-key",
-        session_key,
-        "--message",
-        _build_openclaw_cli_message(payload),
-        "--json",
-        "--timeout",
-        "90",
-    ]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-    except FileNotFoundError as exc:
-        raise RuntimeError("未找到 openclaw CLI，请先安装并确认 PATH") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise RuntimeError("OpenClaw CLI 调用超时") from exc
-
-    if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or f"退出码 {proc.returncode}").strip()
-        raise RuntimeError(f"OpenClaw CLI 调用失败: {detail[:800]}")
-
-    try:
-        data = json.loads(proc.stdout)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"OpenClaw CLI 返回非 JSON: {proc.stdout[:500]}") from exc
-
-    if data.get("status") and data.get("status") != "ok":
-        raise RuntimeError(str(data.get("summary") or data.get("error") or "OpenClaw CLI 返回失败状态"))
-    answer = _extract_openclaw_cli_answer(data)
-    if not answer:
-        raise RuntimeError("OpenClaw CLI 响应缺少文本结果")
-    return answer
 
 
 def _generate_agent_answer(
@@ -508,9 +497,7 @@ def _generate_agent_answer(
     }
     if runtime["runtime"] == "openclaw":
         try:
-            if runtime["endpoint"]:
-                return _call_openclaw_endpoint(runtime, runtime_payload), "openclaw"
-            return _call_openclaw_cli(runtime, runtime_payload), "openclaw-cli"
+            return _call_openclaw_runtime(runtime, runtime_payload)
         except Exception as exc:
             fallback = _local_agent_answer(goal, tool_calls, references)
             return f"OpenClaw 调用失败: {exc}\n\n{fallback}", "local-openclaw-fallback"

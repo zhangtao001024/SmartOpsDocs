@@ -69,6 +69,20 @@ class DocumentChunk(Base):
     source: Mapped[str] = mapped_column(String(255), default="")
     project: Mapped[str] = mapped_column(String(128), default="default", index=True)
     document: Mapped[Document] = relationship(back_populates="chunks")
+    embedding: Mapped["DocumentChunkEmbedding"] = relationship(back_populates="chunk", cascade="all, delete-orphan", uselist=False)
+
+
+class DocumentChunkEmbedding(Base):
+    __tablename__ = "document_chunk_embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    chunk_id: Mapped[int] = mapped_column(ForeignKey("document_chunks.id", ondelete="CASCADE"), unique=True, index=True)
+    model: Mapped[str] = mapped_column(String(128), default="", index=True)
+    dimension: Mapped[int] = mapped_column(Integer, default=0)
+    content_hash: Mapped[str] = mapped_column(String(64), default="", index=True)
+    vector: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    chunk: Mapped[DocumentChunk] = relationship(back_populates="embedding")
 
 
 class DocumentRevision(Base):

@@ -2,11 +2,11 @@
   <div class="chat-page">
     <section class="chat-hero">
       <div class="page-heading">
-        <p class="page-kicker">AI operations console</p>
-        <h2 class="page-title">AI 运维助手</h2>
-        <p class="page-subtitle">把知识库问答和运维工具调用放在一个会话里，保留引用、审计和执行上下文。</p>
+        <p class="page-kicker">Knowledge agent console</p>
+        <h2 class="page-title">知识库智能体</h2>
+        <p class="page-subtitle">OpenClaw 模式会把知识库片段、会话历史和引用交给 Gateway 智能体；内置模式保留本地检索问答。</p>
         <div class="chat-status-strip">
-          <span><strong>{{ mode === 'agent' ? 'Agent' : 'Knowledge' }}</strong> 当前模式</span>
+          <span><strong>{{ mode === 'agent' ? 'Ops Agent' : 'Knowledge Agent' }}</strong> 当前模式</span>
           <span><strong>{{ messages.length }}</strong> 历史消息</span>
           <span><strong>{{ activeContextCount }}</strong> 上下文项</span>
           <span v-if="mode === 'agent'" :class="{ 'run-status-live': !dryRun }">
@@ -16,8 +16,8 @@
       </div>
       <div class="chat-actions">
         <el-radio-group v-model="mode" size="small">
-          <el-radio-button label="knowledge">知识库问答</el-radio-button>
-          <el-radio-button label="agent">运维 Agent</el-radio-button>
+          <el-radio-button value="knowledge">知识库智能体</el-radio-button>
+          <el-radio-button value="agent">运维 Agent</el-radio-button>
         </el-radio-group>
         <div v-if="mode === 'agent'" :class="['dry-run-control', { 'is-live': !dryRun }]">
           <span>
@@ -92,8 +92,8 @@
       <div class="messages" ref="msgBox">
         <div v-if="messages.length === 0" class="empty-hint">
           <div class="empty-icon"><el-icon><ChatDotRound /></el-icon></div>
-          <h3>开始一次运维会话</h3>
-          <p>Agent 模式会展示工具调用审计，写操作默认被 dry-run 拦截。</p>
+          <h3>{{ mode === 'agent' ? '开始一次运维会话' : '向知识库智能体提问' }}</h3>
+          <p>{{ mode === 'agent' ? 'Agent 模式会展示工具调用审计，写操作默认被 dry-run 拦截。' : '它会先检索 SmartOpsDocs 知识库，再由 OpenClaw Gateway 或内置模型基于引用回答。' }}</p>
           <div class="prompt-suggestions">
             <button type="button" @click="question = '根据知识库总结当前项目的部署步骤'">总结部署步骤</button>
             <button type="button" @click="question = '检查当前服务器 Docker 容器并分析异常'">检查容器异常</button>
@@ -150,7 +150,7 @@
           v-model="question"
           type="textarea"
           :rows="3"
-          :placeholder="mode === 'agent' ? '输入 Agent 目标，例如：检查当前服务器 Docker 容器并分析异常（Enter 发送，Shift+Enter 换行）' : '输入故障现象或运维问题（Enter 发送，Shift+Enter 换行）'"
+          :placeholder="mode === 'agent' ? '输入 Agent 目标，例如：检查当前服务器 Docker 容器并分析异常（Enter 发送，Shift+Enter 换行）' : '问知识库智能体，例如：这套系统 Docker 部署有哪些注意事项（Enter 发送，Shift+Enter 换行）'"
           @keydown.enter="onEnter"
           :disabled="loading"
         />
@@ -187,6 +187,7 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import client, { getApiErrorMessage } from '../api/client'
 
@@ -233,7 +234,7 @@ const activeContextCount = computed(() => {
 
 function renderMd(text) {
   if (!text) return ''
-  return marked.parse(text)
+  return DOMPurify.sanitize(marked.parse(text))
 }
 
 function loadHistory() {

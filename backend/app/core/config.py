@@ -23,11 +23,13 @@ class Settings(BaseSettings):
     openai_base_url: str | None = None
     openai_model: str = "gpt-4o-mini"
     openai_vision_model: str | None = None
+    openai_embedding_model: str = "text-embedding-3-small"
     docx_vision_max_images: int = 20
     agent_runtime: str = "local-openclaw"
     openclaw_endpoint: str | None = None
     openclaw_api_key: str | None = None
-    openclaw_agent: str = "smartopsdocs-ops-agent"
+    openclaw_agent: str = "main"
+    openclaw_web_skills: str = "browser-automation"
 
 
 @lru_cache

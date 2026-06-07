@@ -2,14 +2,15 @@
 
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.entities import AppSetting, User
-from pydantic import BaseModel
+from app.services.openclaw_service import get_openclaw_endpoint_status, normalize_skill_names
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api", tags=["settings"])
 
@@ -25,13 +26,15 @@ class AgentRuntimeConfig(BaseModel):
     runtime: str = "local-openclaw"
     endpoint: str = ""
     api_key: str = ""
-    agent: str = "smartopsdocs-ops-agent"
+    agent: str = "main"
+    web_skills: list[str] = Field(default_factory=lambda: ["browser-automation"])
 
 
 class SettingsRequest(BaseModel):
     chat: ModelConfig = ModelConfig()
     optimize: ModelConfig = ModelConfig()
     pull: ModelConfig = ModelConfig()
+    embedding: ModelConfig = ModelConfig(model="text-embedding-3-small")
     agent: AgentRuntimeConfig = AgentRuntimeConfig()
 
 
@@ -39,6 +42,7 @@ class SettingsResponse(BaseModel):
     chat: ModelConfig
     optimize: ModelConfig
     pull: ModelConfig
+    embedding: ModelConfig
     agent: AgentRuntimeConfig
 
 
@@ -84,7 +88,7 @@ def _save_config(db: Session, prefix: str, cfg: ModelConfig) -> None:
 
 def _load_agent_config(db: Session) -> AgentRuntimeConfig:
     env = get_settings()
-    keys = ["agent_runtime", "openclaw_endpoint", "openclaw_api_key", "openclaw_agent"]
+    keys = ["agent_runtime", "openclaw_endpoint", "openclaw_api_key", "openclaw_agent", "openclaw_web_skills"]
     db_vals = {}
     for row in db.query(AppSetting).filter(AppSetting.key.in_(keys)).all():
         db_vals[row.key] = row.value
@@ -93,19 +97,23 @@ def _load_agent_config(db: Session) -> AgentRuntimeConfig:
         endpoint=db_vals.get("openclaw_endpoint") or env.openclaw_endpoint or "",
         api_key=db_vals.get("openclaw_api_key") or env.openclaw_api_key or "",
         agent=db_vals.get("openclaw_agent") or env.openclaw_agent,
+        web_skills=normalize_skill_names(db_vals.get("openclaw_web_skills") or getattr(env, "openclaw_web_skills", "browser-automation")),
     )
 
 
 def _save_agent_config(db: Session, cfg: AgentRuntimeConfig) -> None:
     if cfg.runtime == "openclaw":
         endpoint = cfg.endpoint.strip()
-        if endpoint and not endpoint.startswith(("http://", "https://")):
-            raise HTTPException(status_code=400, detail="OpenClaw Endpoint 必须是完整 URL，例如 http://127.0.0.1:3000/api/agent/run；留空则使用本机 openclaw CLI")
+        if not endpoint:
+            raise HTTPException(status_code=400, detail="OpenClaw Gateway URL 不能为空")
+        if not endpoint.startswith(("http://", "https://")):
+            raise HTTPException(status_code=400, detail="OpenClaw Gateway URL 必须是 http:// 或 https:// 开头的完整 URL")
     overrides = {
         "agent_runtime": cfg.runtime,
         "openclaw_endpoint": cfg.endpoint.strip(),
         "openclaw_api_key": cfg.api_key,
         "openclaw_agent": cfg.agent,
+        "openclaw_web_skills": ",".join(normalize_skill_names(cfg.web_skills)),
     }
     for key, value in overrides.items():
         row = db.get(AppSetting, key)
@@ -184,12 +192,35 @@ def _test_model_config(cfg: ModelConfig) -> SettingsTestResponse:
     return SettingsTestResponse(ok=True, message=f"{model} 可用{suffix}", latency_ms=latency_ms)
 
 
+def _test_embedding_config(cfg: ModelConfig) -> SettingsTestResponse:
+    api_key = cfg.api_key.strip()
+    model = cfg.model.strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API Key 为空，无法验证 Embedding 模型")
+    if not model:
+        raise HTTPException(status_code=400, detail="Embedding 模型名称不能为空")
+    started = time.perf_counter()
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=api_key, base_url=cfg.base_url.strip() or None, timeout=30.0)
+        response = client.embeddings.create(model=model, input=["SmartOpsDocs embedding probe"])
+        vector = response.data[0].embedding if response.data else []
+    except Exception as exc:
+        detail = _redact_error(str(exc), api_key)
+        raise HTTPException(status_code=400, detail=f"Embedding 验证失败：{detail}") from exc
+    latency_ms = int((time.perf_counter() - started) * 1000)
+    return SettingsTestResponse(ok=True, message=f"{model} 可用，维度 {len(vector)}", latency_ms=latency_ms)
+
+
 def _test_agent_config(cfg: AgentRuntimeConfig) -> SettingsTestResponse:
     if cfg.runtime != "openclaw":
-        return SettingsTestResponse(ok=True, message="本地兼容模式可用；实际回答能力取决于 Chat 模型配置")
+        return SettingsTestResponse(ok=True, message="内置知识库问答可用；实际回答能力取决于 Chat 模型配置")
     endpoint = cfg.endpoint.strip()
-    if endpoint and not endpoint.startswith(("http://", "https://")):
-        raise HTTPException(status_code=400, detail="OpenClaw Endpoint 必须是完整 URL；留空则使用本机 openclaw CLI")
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="OpenClaw Gateway URL 不能为空")
+    if not endpoint.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="OpenClaw Gateway URL 必须是 http:// 或 https:// 开头的完整 URL")
     started = time.perf_counter()
     runtime = {
         "runtime": cfg.runtime,
@@ -209,13 +240,13 @@ def _test_agent_config(cfg: AgentRuntimeConfig) -> SettingsTestResponse:
         "policy": {"source": "SmartOpsDocs settings test", "dry_run_enforced": True},
     }
     try:
-        from app.services.agent_service import _call_openclaw_cli, _call_openclaw_endpoint
+        from app.services.agent_service import _call_openclaw_runtime
 
-        _call_openclaw_endpoint(runtime, payload) if endpoint else _call_openclaw_cli(runtime, payload)
+        _, mode = _call_openclaw_runtime(runtime, payload)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="OpenClaw 验证失败：" + _redact_error(str(exc), cfg.api_key)) from exc
     latency_ms = int((time.perf_counter() - started) * 1000)
-    return SettingsTestResponse(ok=True, message=f"OpenClaw Agent {runtime['agent']} 可用", latency_ms=latency_ms)
+    return SettingsTestResponse(ok=True, message=f"OpenClaw Gateway 知识库智能体 {runtime['agent']} 可用", latency_ms=latency_ms, level="ok")
 
 
 @router.get("/settings", response_model=SettingsResponse)
@@ -225,8 +256,69 @@ def get_settings_api(db: Session = Depends(get_db), _: User = Depends(current_us
         chat=_load_config(db, "chat", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
         optimize=_load_config(db, "optimize", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model, "vision_model": env.openai_vision_model or ""}),
         pull=_load_config(db, "pull", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
+        embedding=_load_config(db, "embedding", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_embedding_model}),
         agent=_load_agent_config(db),
     )
+
+
+@router.get("/openclaw/status")
+def openclaw_status_api(db: Session = Depends(get_db), _: User = Depends(current_user)):
+    agent_cfg = _load_agent_config(db)
+    try:
+        if agent_cfg.runtime == "openclaw" and agent_cfg.endpoint.strip():
+            status = get_openclaw_endpoint_status(agent_cfg.endpoint, agent_cfg.api_key)
+            status["default_agent_id"] = agent_cfg.agent
+            return status
+        return {
+            "ok": False,
+            "runtime_version": "",
+            "default_agent_id": agent_cfg.agent,
+            "gateway": {"url": agent_cfg.endpoint.strip(), "reachable": False, "latency_ms": None, "error": "当前使用内置知识库问答"},
+            "gateway_service": {"installed": False, "runtime_short": "local"},
+            "tasks": {"total": 0, "active": 0, "failures": 0},
+            "raw": {"mode": "local"},
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "runtime_version": "",
+            "default_agent_id": "",
+            "gateway": {"url": agent_cfg.endpoint.strip(), "reachable": False, "latency_ms": None, "error": _redact_error(str(exc))},
+            "gateway_service": {"installed": False, "runtime_short": ""},
+            "tasks": {"total": 0, "active": 0, "failures": 0},
+            "raw": {},
+        }
+
+
+@router.get("/openclaw/skills")
+def openclaw_skills_api(
+    agent: str = Query(default="", max_length=80),
+    db: Session = Depends(get_db),
+    _: User = Depends(current_user),
+):
+    agent_cfg = _load_agent_config(db)
+    selected = agent_cfg.web_skills
+    if agent_cfg.runtime == "openclaw":
+        return {
+            "ok": True,
+            "error": "",
+            "workspace_dir": "",
+            "managed_skills_dir": "",
+            "skills": [],
+            "total": 0,
+            "eligible_total": 0,
+            "selected_web_skills": selected,
+        }
+    return {
+        "ok": True,
+        "error": "",
+        "workspace_dir": "",
+        "managed_skills_dir": "",
+        "skills": [],
+        "total": 0,
+        "eligible_total": 0,
+        "selected_web_skills": selected,
+    }
 
 
 @router.post("/settings/test", response_model=SettingsTestResponse)
@@ -234,6 +326,8 @@ def test_settings_api(payload: SettingsTestRequest, _: User = Depends(current_us
     scope = payload.scope.strip()
     if scope in {"chat", "optimize", "pull"}:
         return _test_model_config(ModelConfig(**payload.config))
+    if scope == "embedding":
+        return _test_embedding_config(ModelConfig(**payload.config))
     if scope == "agent":
         return _test_agent_config(AgentRuntimeConfig(**payload.config))
     raise HTTPException(status_code=400, detail="未知配置类型")
@@ -244,6 +338,7 @@ def update_settings_api(payload: SettingsRequest, db: Session = Depends(get_db),
     _save_config(db, "chat", payload.chat)
     _save_config(db, "optimize", payload.optimize)
     _save_config(db, "pull", payload.pull)
+    _save_config(db, "embedding", payload.embedding)
     _save_agent_config(db, payload.agent)
     db.commit()
     env = get_settings()
@@ -251,5 +346,6 @@ def update_settings_api(payload: SettingsRequest, db: Session = Depends(get_db),
         chat=_load_config(db, "chat", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
         optimize=_load_config(db, "optimize", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model, "vision_model": env.openai_vision_model or ""}),
         pull=_load_config(db, "pull", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_model}),
+        embedding=_load_config(db, "embedding", {"api_key": env.openai_api_key or "", "base_url": env.openai_base_url or "", "model": env.openai_embedding_model}),
         agent=_load_agent_config(db),
     )

@@ -1,6 +1,9 @@
 from pathlib import Path
 import base64
+import hashlib
 import io
+import json
+import math
 import mimetypes
 import re
 import shutil
@@ -10,7 +13,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.entities import Document, DocumentChunk, DocumentRevision, DocumentTask
+from app.models.entities import AppSetting, Document, DocumentChunk, DocumentChunkEmbedding, DocumentRevision, DocumentTask
 
 
 def document_workspace(document_id: int) -> Path:
@@ -178,6 +181,10 @@ def _image_text_for_markdown(image_name: str, image_bytes: bytes, image_state: d
     if not api_key:
         return describe_image_with_ocr(image_bytes)
     return ""
+
+
+def image_text_for_markdown(image_name: str, image_bytes: bytes, image_state: dict, db: Session | None) -> str:
+    return _image_text_for_markdown(image_name, image_bytes, image_state, db)
 
 
 def describe_image_with_vision_model(image_name: str, image_bytes: bytes, api_key: str, base_url: str | None, model: str) -> str:
@@ -440,9 +447,74 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
+HEADING_RE = re.compile(r"^#{1,6}\s+")
+
+
 def split_text(text: str, chunk_size: int = 900, overlap: int = 120) -> list[str]:
     if not text:
         return []
+    text = clean_text(text)
+    chunk_size = max(chunk_size, 1)
+    overlap = min(max(overlap, 0), max(chunk_size - 1, 0))
+    if len(text) <= chunk_size:
+        return [text]
+
+    blocks = _markdown_blocks(text)
+    if len(blocks) <= 1:
+        return _split_fixed_window(text, chunk_size, overlap)
+
+    chunks: list[str] = []
+    current = ""
+    current_heading = ""
+
+    for block in blocks:
+        if _is_heading_block(block):
+            current_heading = block.splitlines()[0].strip()
+
+        pieces = _split_fixed_window(block, chunk_size, overlap) if len(block) > chunk_size else [block]
+        for piece in pieces:
+            piece = _with_heading_context(piece, current_heading, chunk_size)
+            separator = "\n\n" if current else ""
+            if current and len(current) + len(separator) + len(piece) > chunk_size:
+                chunks.append(current.strip())
+                current = _start_chunk_with_overlap(chunks[-1], piece, chunk_size, overlap)
+            else:
+                current = f"{current}{separator}{piece}" if current else piece
+
+    if current.strip():
+        chunks.append(current.strip())
+    return [chunk for chunk in chunks if chunk]
+
+
+def _markdown_blocks(text: str) -> list[str]:
+    blocks: list[str] = []
+    current: list[str] = []
+    in_fence = False
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_fence = not in_fence
+            current.append(line.rstrip())
+            continue
+        if not in_fence and not stripped:
+            if current:
+                blocks.append("\n".join(current).strip())
+                current = []
+            continue
+        if not in_fence and HEADING_RE.match(stripped):
+            if current:
+                blocks.append("\n".join(current).strip())
+            current = [stripped]
+            continue
+        current.append(line.rstrip())
+
+    if current:
+        blocks.append("\n".join(current).strip())
+    return [block for block in blocks if block]
+
+
+def _split_fixed_window(text: str, chunk_size: int, overlap: int) -> list[str]:
     chunks = []
     start = 0
     while start < len(text):
@@ -450,8 +522,31 @@ def split_text(text: str, chunk_size: int = 900, overlap: int = 120) -> list[str
         chunks.append(text[start:end].strip())
         if end == len(text):
             break
-        start = max(0, end - overlap)
+        start = max(start + 1, end - overlap)
     return [chunk for chunk in chunks if chunk]
+
+
+def _is_heading_block(block: str) -> bool:
+    return bool(HEADING_RE.match(block.splitlines()[0].strip())) if block else False
+
+
+def _with_heading_context(piece: str, heading: str, chunk_size: int) -> str:
+    if not heading or _is_heading_block(piece):
+        return piece
+    if piece.startswith(f"{heading}\n") or piece == heading:
+        return piece
+    candidate = f"{heading}\n\n{piece}"
+    return candidate if len(candidate) <= chunk_size else piece
+
+
+def _start_chunk_with_overlap(previous: str, piece: str, chunk_size: int, overlap: int) -> str:
+    if not overlap:
+        return piece
+    available = chunk_size - len(piece) - 2
+    if available < 40:
+        return piece
+    prefix = previous[-min(overlap, available):].strip()
+    return f"{prefix}\n\n{piece}" if prefix else piece
 
 
 def create_document_task(db: Session, document: Document, task_type: str = "parse") -> DocumentTask:
@@ -578,6 +673,7 @@ def rebuild_document_chunks(db: Session, document: Document, markdown: str) -> N
     delete_document_fts(db, document.id)
     document.chunks.clear()
     db.flush()
+    created_chunks: list[DocumentChunk] = []
     for index, chunk_text in enumerate(chunks):
         chunk = DocumentChunk(
             chunk_index=index,
@@ -588,6 +684,8 @@ def rebuild_document_chunks(db: Session, document: Document, markdown: str) -> N
         document.chunks.append(chunk)
         db.flush()
         _insert_fts(db, chunk)
+        created_chunks.append(chunk)
+    _upsert_chunk_embeddings(db, created_chunks)
 
 
 def _raw_sql(db: Session, sql: str, params: tuple | dict | None = None):
@@ -620,6 +718,16 @@ def delete_document_fts(db: Session, document_id: int) -> None:
 
 
 def search_chunks(db: Session, project: str, query: str, limit: int = 5) -> list[DocumentChunk]:
+    """向量语义召回 + FTS5/LIKE 关键词召回的混合检索."""
+    limit = min(max(limit, 1), 20)
+    keyword_chunks = _keyword_search_chunks(db, project, query, limit)
+    vector_hits = _vector_search_chunks(db, project, query, limit)
+    if not vector_hits:
+        return keyword_chunks
+    return _merge_hybrid_results(keyword_chunks, vector_hits, limit)
+
+
+def _keyword_search_chunks(db: Session, project: str, query: str, limit: int = 5) -> list[DocumentChunk]:
     """FTS5 + 标题/来源补充召回."""
     _ensure_fts(db)
     limit = min(max(limit, 1), 20)
@@ -627,17 +735,19 @@ def search_chunks(db: Session, project: str, query: str, limit: int = 5) -> list
     if not terms:
         return db.query(DocumentChunk).filter(DocumentChunk.project == project).order_by(DocumentChunk.id.desc()).limit(limit).all()
 
-    fts_query = " OR ".join(t for t in terms if len(t) > 1)
-    if not fts_query:
-        return db.query(DocumentChunk).filter(DocumentChunk.project == project).order_by(DocumentChunk.id.desc()).limit(limit).all()
-
-    sql = (
-        "SELECT rowid FROM chunk_fts "
-        "WHERE chunk_fts MATCH :q AND project = :proj "
-        "ORDER BY rank LIMIT :lim"
-    )
-    result = _raw_sql(db, sql, {"q": _sanitize_fts(fts_query), "proj": project, "lim": limit})
-    rows = result.fetchall()
+    fts_query = _build_fts_query(terms)
+    rows = []
+    if fts_query:
+        sql = (
+            "SELECT rowid FROM chunk_fts "
+            "WHERE chunk_fts MATCH :q AND project = :proj "
+            "ORDER BY rank LIMIT :lim"
+        )
+        try:
+            result = _raw_sql(db, sql, {"q": fts_query, "proj": project, "lim": limit})
+            rows = result.fetchall()
+        except Exception:
+            rows = []
     ids = [r[0] for r in rows]
     ranked: list[DocumentChunk] = []
     seen: set[int] = set()
@@ -654,6 +764,8 @@ def search_chunks(db: Session, project: str, query: str, limit: int = 5) -> list
             filters.append(DocumentChunk.source.like(like))
             filters.append(Document.title.like(like))
     if not filters:
+        if not ranked:
+            return db.query(DocumentChunk).filter(DocumentChunk.project == project).order_by(DocumentChunk.id.desc()).limit(limit).all()
         return ranked[:limit]
     fallback = (
         db.query(DocumentChunk)
@@ -661,9 +773,10 @@ def search_chunks(db: Session, project: str, query: str, limit: int = 5) -> list
         .filter(DocumentChunk.project == project)
         .filter(or_(*filters))
         .order_by(DocumentChunk.id.desc())
-        .limit(limit * 2)
+        .limit(limit * 4)
         .all()
     )
+    fallback.sort(key=lambda chunk: (_fallback_score(chunk, terms), chunk.id), reverse=True)
     for chunk in fallback:
         if chunk.id not in seen:
             ranked.append(chunk)
@@ -676,3 +789,188 @@ def search_chunks(db: Session, project: str, query: str, limit: int = 5) -> list
 def _sanitize_fts(query: str) -> str:
     """清洗 FTS5 查询，移除特殊字符."""
     return re.sub(r'[^\w\u4e00-\u9fff\s]', ' ', query).strip()
+
+
+def _build_fts_query(terms: list[str]) -> str:
+    reserved = {"AND", "OR", "NOT", "NEAR"}
+    phrases = []
+    seen = set()
+    for term in terms:
+        cleaned = _sanitize_fts(term)
+        if len(cleaned) <= 1 or cleaned.upper() in reserved or cleaned in seen:
+            continue
+        phrases.append(f'"{cleaned}"')
+        seen.add(cleaned)
+    return " OR ".join(phrases)
+
+
+def _fallback_score(chunk: DocumentChunk, terms: list[str]) -> int:
+    document = chunk.document
+    title = (document.title if document else "").lower()
+    source = (chunk.source or "").lower()
+    content = (chunk.content or "").lower()
+    score = 0
+    for term in terms[:5]:
+        needle = term.lower()
+        if not needle:
+            continue
+        if title == needle:
+            score += 20
+        if needle in title:
+            score += 12
+        if needle in source:
+            score += 6
+        position = content.find(needle)
+        if position >= 0:
+            score += 4
+            score += max(0, 3 - position // 300)
+    return score
+
+
+def _resolve_embedding_config(db: Session) -> dict:
+    env = get_settings()
+    keys = [
+        "embedding_api_key",
+        "embedding_base_url",
+        "embedding_model",
+        "chat_api_key",
+        "chat_base_url",
+    ]
+    db_vals = {}
+    for row in db.query(AppSetting).filter(AppSetting.key.in_(keys)).all():
+        db_vals[row.key] = row.value
+    return {
+        "api_key": db_vals.get("embedding_api_key") or db_vals.get("chat_api_key") or getattr(env, "openai_api_key", "") or "",
+        "base_url": db_vals.get("embedding_base_url") or db_vals.get("chat_base_url") or getattr(env, "openai_base_url", None) or None,
+        "model": db_vals.get("embedding_model") or getattr(env, "openai_embedding_model", "text-embedding-3-small") or "text-embedding-3-small",
+    }
+
+
+def _upsert_chunk_embeddings(db: Session, chunks: list[DocumentChunk]) -> None:
+    if not chunks:
+        return
+    config = _resolve_embedding_config(db)
+    if not config["api_key"]:
+        return
+
+    texts = [_embedding_text(chunk) for chunk in chunks]
+    try:
+        vectors = _embed_texts(texts, config)
+    except Exception:
+        return
+    if len(vectors) != len(chunks):
+        return
+
+    model = config["model"]
+    for chunk, text, vector in zip(chunks, texts, vectors, strict=False):
+        if not vector:
+            continue
+        payload = json.dumps(vector, separators=(",", ":"))
+        content_hash = _embedding_hash(text)
+        if chunk.embedding:
+            embedding = chunk.embedding
+            embedding.model = model
+            embedding.dimension = len(vector)
+            embedding.content_hash = content_hash
+            embedding.vector = payload
+        else:
+            chunk.embedding = DocumentChunkEmbedding(
+                chunk_id=chunk.id,
+                model=model,
+                dimension=len(vector),
+                content_hash=content_hash,
+                vector=payload,
+            )
+    db.flush()
+
+
+def _vector_search_chunks(db: Session, project: str, query: str, limit: int) -> list[tuple[DocumentChunk, float]]:
+    config = _resolve_embedding_config(db)
+    if not config["api_key"]:
+        return []
+    try:
+        query_vector = _embed_texts([query], config)[0]
+    except Exception:
+        return []
+    if not query_vector:
+        return []
+
+    rows = (
+        db.query(DocumentChunkEmbedding, DocumentChunk)
+        .join(DocumentChunk, DocumentChunk.id == DocumentChunkEmbedding.chunk_id)
+        .filter(DocumentChunk.project == project)
+        .filter(DocumentChunkEmbedding.model == config["model"])
+        .all()
+    )
+    hits: list[tuple[DocumentChunk, float]] = []
+    for embedding, chunk in rows:
+        vector = _decode_vector(embedding.vector)
+        if not vector or embedding.dimension != len(query_vector):
+            continue
+        score = _cosine_similarity(query_vector, vector)
+        if score > 0:
+            hits.append((chunk, score))
+    hits.sort(key=lambda item: (item[1], item[0].id), reverse=True)
+    return hits[: max(limit * 4, limit)]
+
+
+def _merge_hybrid_results(
+    keyword_chunks: list[DocumentChunk],
+    vector_hits: list[tuple[DocumentChunk, float]],
+    limit: int,
+) -> list[DocumentChunk]:
+    scores: dict[int, float] = {}
+    chunks: dict[int, DocumentChunk] = {}
+
+    for rank, chunk in enumerate(keyword_chunks):
+        chunks[chunk.id] = chunk
+        scores[chunk.id] = scores.get(chunk.id, 0.0) + 0.35 / (rank + 1)
+
+    for rank, (chunk, vector_score) in enumerate(vector_hits):
+        chunks[chunk.id] = chunk
+        semantic = max(vector_score, 0.0)
+        scores[chunk.id] = scores.get(chunk.id, 0.0) + semantic * 0.75 + 0.15 / (rank + 1)
+
+    ordered_ids = sorted(scores, key=lambda chunk_id: (scores[chunk_id], chunks[chunk_id].id), reverse=True)
+    return [chunks[chunk_id] for chunk_id in ordered_ids[:limit]]
+
+
+def _embed_texts(texts: list[str], config: dict) -> list[list[float]]:
+    from openai import OpenAI
+
+    client = OpenAI(api_key=config["api_key"], base_url=config["base_url"], timeout=45.0)
+    response = client.embeddings.create(model=config["model"], input=texts)
+    ordered = sorted(response.data, key=lambda item: getattr(item, "index", 0))
+    return [list(item.embedding) for item in ordered]
+
+
+def _embedding_text(chunk: DocumentChunk) -> str:
+    return f"{chunk.source}\n\n{chunk.content}".strip()
+
+
+def _embedding_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _decode_vector(payload: str) -> list[float]:
+    try:
+        data = json.loads(payload)
+    except Exception:
+        return []
+    if not isinstance(data, list):
+        return []
+    try:
+        return [float(value) for value in data]
+    except (TypeError, ValueError):
+        return []
+
+
+def _cosine_similarity(left: list[float], right: list[float]) -> float:
+    if len(left) != len(right) or not left:
+        return 0.0
+    dot = sum(a * b for a, b in zip(left, right, strict=False))
+    left_norm = math.sqrt(sum(a * a for a in left))
+    right_norm = math.sqrt(sum(b * b for b in right))
+    if not left_norm or not right_norm:
+        return 0.0
+    return dot / (left_norm * right_norm)

@@ -44,6 +44,32 @@ class WebPullRequest(BaseModel):
     instruction: str = ""
 
 
+def _document_source_kind(document: Document) -> str:
+    source = (document.file_path or document.title or "").strip().lower()
+    title = (document.title or "").strip().lower()
+    if source.startswith(("http://", "https://")) or title.startswith(("http://", "https://")):
+        return "web"
+    suffix = Path(source or title).suffix.lower()
+    if suffix in {".docx", ".doc"}:
+        return "word"
+    if suffix == ".pdf":
+        return "pdf"
+    if suffix == ".md":
+        return "markdown"
+    if suffix == ".txt":
+        return "text"
+    if document.status == "draft":
+        return "draft"
+    return "document"
+
+
+def _document_source_hint(document: Document) -> str:
+    source = (document.file_path or "").strip()
+    if source.startswith(("http://", "https://")):
+        return source
+    return ""
+
+
 def _run_document_task(document_id: int, task_id: int | None = None) -> None:
     db = SessionLocal()
     try:
@@ -185,14 +211,23 @@ def knowledge_tree(
         .group_by(DocumentChunk.document_id)
         .all()
     } if document_ids else {}
+    task_updates = {
+        document_id: updated_at
+        for document_id, updated_at in db.query(DocumentTask.document_id, func.max(DocumentTask.updated_at))
+        .filter(DocumentTask.document_id.in_(document_ids))
+        .group_by(DocumentTask.document_id)
+        .all()
+    } if document_ids else {}
     return [
         {
             "id": doc.id,
             "title": doc.title,
             "project": doc.project,
             "status": doc.status,
+            "source_kind": _document_source_kind(doc),
             "chunk_count": chunk_counts.get(doc.id, 0),
             "created_at": doc.created_at,
+            "updated_at": task_updates.get(doc.id) or doc.created_at,
         }
         for doc in documents
     ]
@@ -263,6 +298,8 @@ def _document_detail_payload(db: Session, document: Document) -> dict:
         "title": document.title,
         "project": document.project,
         "status": document.status,
+        "source_kind": _document_source_kind(document),
+        "source_hint": _document_source_hint(document),
         "error_message": document.error_message,
         "created_at": document.created_at,
         "latest_task": {
