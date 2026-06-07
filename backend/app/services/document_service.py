@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.entities import AppSetting, Document, DocumentChunk, DocumentChunkEmbedding, DocumentRevision, DocumentTask
+from app.services.prompts import image_analysis_system_prompt, image_analysis_user_text
 
 
 def document_workspace(document_id: int) -> Path:
@@ -199,12 +200,12 @@ def describe_image_with_vision_model(image_name: str, image_bytes: bytes, api_ke
             messages=[
                 {
                     "role": "system",
-                    "content": "你是运维文档解析助手。请读取图片中的文字、命令、错误信息、配置、表格和架构关系，不要编造。",
+                    "content": image_analysis_system_prompt(),
                 },
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "请解析这张运维文档图片，输出简洁 Markdown。看不清时直接说明。"},
+                        {"type": "text", "text": image_analysis_user_text()},
                         {"type": "image_url", "image_url": {"url": image_to_data_url(image_name, image_bytes)}},
                     ],
                 },
@@ -346,19 +347,12 @@ def extract_docx_images_with_vision_model(path: Path, image_names: list[str], ap
                     messages=[
                         {
                             "role": "system",
-                            "content": "你是运维文档解析助手。请读取图片中的文字、命令、错误信息、配置、表格和架构关系，不要编造。",
+                            "content": image_analysis_system_prompt(),
                         },
                         {
                             "role": "user",
                             "content": [
-                                {
-                                    "type": "text",
-                                    "text": (
-                                        "请解析这张运维文档图片，输出 Markdown。"
-                                        "如果是截图，提取界面文字、报错、命令、状态；"
-                                        "如果是架构图，描述组件关系；如果看不清，请说明。"
-                                    ),
-                                },
+                                {"type": "text", "text": image_analysis_user_text()},
                                 {"type": "image_url", "image_url": {"url": data_url}},
                             ],
                         },

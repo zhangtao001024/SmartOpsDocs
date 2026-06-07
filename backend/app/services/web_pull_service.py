@@ -23,6 +23,7 @@ from app.services.document_service import (
     update_document_task,
 )
 from app.core.config import get_settings
+from app.services.prompts import build_web_pull_prompt, web_pull_contract, web_pull_system_prompt
 
 
 WEB_USER_AGENT = "SmartOpsDocs/0.1 (+https://github.com/zhangtao001024/SmartOpsDocs)"
@@ -770,50 +771,7 @@ def build_web_markdown(
     if openclaw_markdown:
         return _ensure_web_images_preserved(openclaw_markdown, image_assets), openclaw_mode
     llm = _resolve_pull_llm(db)
-    image_rule = (
-        "6. 如果网页正文中包含 `![...](assets/web-image-...)` 图片链接，必须保留这些图片链接、图片说明和图片识别文本，"
-        "并尽量放在对应步骤附近；不要改写 assets 路径。"
-        if image_assets
-        else ""
-    )
-    prompt = f"""请把下面网页内容整理成适合长期复用的运维/研发知识库 Markdown。
-
-核心目标：
-1. 只保留有长期价值的信息：架构原理、组件职责、部署/配置步骤、命令、参数、API、故障现象、排查方法、限制、风险、性能/安全注意事项。
-2. 丢弃没有知识库价值的内容：导航、菜单、页脚、版权、广告、评论、登录注册、目录重复项、社交分享、推荐文章、作者寒暄、营销话术、无关链接。
-3. 不要编造原文没有的信息；原文缺失的章节写「原文未提供」。
-4. 合并重复内容，把散乱网页整理成可检索、可引用、可执行的知识条目。
-5. 输出必须是 Markdown，不要输出解释性前后缀。
-{image_rule}
-
-输出结构必须使用以下小节：
-# {title}
-
-> 来源：{url}
-
-## 摘要
-- 用 3-6 条要点总结真正有价值的信息。
-
-## 适用场景
-
-## 关键概念与组件职责
-
-## 操作步骤 / 配置 / 命令
-
-## 排障线索与注意事项
-
-## 可检索关键词
-- 列出 8-20 个关键词，包含产品名、组件名、命令、错误码、配置项。
-
-用户补充要求：
-{instruction or "无"}
-
-标题：{title}
-来源：{url}
-
-网页正文（可能包含已下载到本地知识库的图片 Markdown，`assets/...` 路径必须原样保留）：
-{source_text}
-"""
+    prompt = build_web_pull_prompt(url, title, source_text, instruction, bool(image_assets))
     if llm["api_key"]:
         try:
             from openai import OpenAI
@@ -822,7 +780,7 @@ def build_web_markdown(
             completion = client.chat.completions.create(
                 model=llm["model"],
                 messages=[
-                    {"role": "system", "content": "你是知识库采集器，擅长把网页内容清洗整理成准确、可检索的 Markdown。"},
+                    {"role": "system", "content": web_pull_system_prompt()},
                     {"role": "user", "content": prompt},
                 ],
             )
@@ -904,6 +862,7 @@ def _build_web_markdown_with_openclaw(
                     "排障线索与注意事项",
                     "可检索关键词",
                 ],
+                "output_contract": web_pull_contract(bool(image_assets)),
                 "skills_hint": skills_hint,
             },
             "tool_calls": [],

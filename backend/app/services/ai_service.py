@@ -5,6 +5,13 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.entities import AppSetting, ChatHistory, Document
 from app.services.document_service import search_chunks
+from app.services.prompts import (
+    build_document_optimize_prompt,
+    build_knowledge_answer_user_prompt,
+    document_optimize_system_prompt,
+    knowledge_answer_policy,
+    knowledge_answer_system_prompt,
+)
 
 def _resolve_llm(db: Session, prefix: str) -> dict:
     """解析 LLM 配置：数据库优先，env 兜底."""
@@ -73,11 +80,7 @@ def answer_question(db: Session, project: str, question: str, session_id: str) -
                     "project": project,
                     "knowledge_context": context or "无匹配片段",
                     "references": references,
-                    "answer_policy": [
-                        "只基于 SmartOpsDocs 提供的知识库片段和当前会话历史回答。",
-                        "如果知识库没有证据，直接说明缺少依据，并给出下一步检索建议。",
-                        "回答末尾列出引用来源编号。",
-                    ],
+                    "answer_policy": knowledge_answer_policy(),
                 },
                 "tool_calls": [],
                 "references": references,
@@ -85,6 +88,10 @@ def answer_question(db: Session, project: str, question: str, session_id: str) -
                     "source": "SmartOpsDocs knowledge agent",
                     "external_data_is_untrusted": True,
                     "do_not_fabricate": True,
+                },
+                "task_contract": {
+                    "system_instruction": knowledge_answer_system_prompt(),
+                    "output_requirements": knowledge_answer_policy(),
                 },
             }
             answer, mode = _call_openclaw_runtime(runtime, payload)
@@ -124,15 +131,11 @@ def answer_question(db: Session, project: str, question: str, session_id: str) -
                 messages=[
                     {
                         "role": "system",
-                        "content": "你是运维助手。只基于给定上下文回答，无法确认时直接说明，并在回答末尾列出引用来源编号。",
+                        "content": knowledge_answer_system_prompt(),
                     },
                     {
                         "role": "user",
-                        "content": (
-                            f"历史对话摘要:\n{history_text or '无'}\n\n"
-                            f"知识库上下文:\n{context or '无'}\n\n"
-                            f"当前问题: {question}"
-                        ),
+                        "content": build_knowledge_answer_user_prompt(history_text, context, question),
                     },
                 ],
             )
@@ -167,21 +170,7 @@ def optimize_document(db: Session, document_id: int, instruction: str | None = N
 
     source_text = raw_text[:12000]
     instruction = instruction or "整理为清晰的运维知识库文档，保留关键命令、配置、排障步骤和注意事项。"
-    prompt = f"""请优化下面的运维文档，输出 Markdown。
-
-要求：
-1. 不要编造原文没有的信息。
-2. 保留 IP、端口、命令、配置项、路径、错误信息。
-3. 按「适用场景、前置条件、操作步骤、验证方法、常见问题、注意事项」组织。
-4. 对含糊表述做措辞优化，但不要改变技术含义。
-5. 如果原文信息不足，在对应小节写「原文未提供」。
-
-用户补充要求：
-{instruction}
-
-原文：
-{source_text}
-"""
+    prompt = build_document_optimize_prompt(source_text, instruction)
 
     if llm["api_key"]:
         try:
@@ -191,7 +180,7 @@ def optimize_document(db: Session, document_id: int, instruction: str | None = N
             completion = client.chat.completions.create(
                 model=llm["model"],
                 messages=[
-                    {"role": "system", "content": "你是资深 SRE 文档工程师，擅长把零散运维记录整理成可执行 Runbook。"},
+                    {"role": "system", "content": document_optimize_system_prompt()},
                     {"role": "user", "content": prompt},
                 ],
             )

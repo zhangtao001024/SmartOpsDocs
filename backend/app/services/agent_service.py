@@ -14,6 +14,7 @@ from app.models.entities import AppSetting
 from app.services.ai_service import _recent_history, _resolve_llm, optimize_document
 from app.services.document_service import create_knowledge_draft, search_chunks
 from app.services.openclaw_service import normalize_skill_names
+from app.services.prompts import ops_agent_system_prompt
 from app.services.docker_service import (
     container_action,
     docker_dashboard,
@@ -513,11 +514,7 @@ def _generate_agent_answer(
                 messages=[
                     {
                         "role": "system",
-                        "content": (
-                            "你是 SmartOpsDocs 专用运维 Agent。按 OpenClaw 风格工作：维护上下文，"
-                            "只能基于工具结果和知识库引用作答；写操作如果被 dry-run 拦截，必须明确说明。"
-                            "知识库写入只能生成草稿，不能覆盖正式文档。"
-                        ),
+                        "content": ops_agent_system_prompt(),
                     },
                     {
                         "role": "user",
