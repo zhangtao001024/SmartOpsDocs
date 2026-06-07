@@ -89,11 +89,7 @@
               <el-button icon="Files" @click="openRevisions(detail)">版本</el-button>
               <el-button icon="Refresh" :loading="reprocessing" @click="reprocess(detail)">重新解析</el-button>
               <el-button icon="MagicStick" type="primary" @click="openOptimize(detail)">优化</el-button>
-              <el-popconfirm title="确定删除此文档？" confirm-button-text="删除" @confirm="removeDoc(detail)">
-                <template #reference>
-                  <el-button icon="Delete" type="danger">删除</el-button>
-                </template>
-              </el-popconfirm>
+              <el-button icon="Delete" type="danger" @click="confirmRemoveDoc(detail)">删除</el-button>
             </div>
           </header>
 
@@ -272,7 +268,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { marked } from 'marked'
 import client, { getApiErrorMessage } from '../api/client'
 
@@ -340,6 +336,7 @@ function statusType(status) {
   if (status === 'completed') return 'success'
   if (status === 'failed') return 'danger'
   if (status === 'parsing') return 'warning'
+  if (status === 'draft') return 'info'
   return 'info'
 }
 
@@ -348,6 +345,7 @@ function statusLabel(status) {
   if (status === 'parsing') return '解析中'
   if (status === 'uploaded') return '待解析'
   if (status === 'failed') return '失败'
+  if (status === 'draft') return '草稿'
   return status || '未知'
 }
 
@@ -356,6 +354,7 @@ function statusText(status) {
   if (status === 'parsing') return '文档正在解析'
   if (status === 'uploaded') return '文档已上传，等待解析'
   if (status === 'failed') return '解析失败'
+  if (status === 'draft') return 'Agent 生成的知识草稿，建议审核后再作为正式知识使用'
   return status || '未知状态'
 }
 
@@ -583,6 +582,27 @@ async function removeDoc(row) {
   }
 }
 
+async function confirmRemoveDoc(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除文档「${row.title}」？删除后会移除文档内容和检索片段。`,
+      '确认删除文档',
+      {
+        confirmButtonText: '删除文档',
+        cancelButtonText: '取消',
+        type: 'warning',
+        closeOnClickModal: false,
+        distinguishCancelAndClose: true,
+      }
+    )
+    await removeDoc(row)
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      ElMessage.error(getApiErrorMessage(error, '删除失败'))
+    }
+  }
+}
+
 watch(() => route.query.doc, () => {
   const id = Number(route.query.doc || 0)
   if (id) openDocumentById(id)
@@ -601,36 +621,53 @@ onBeforeUnmount(() => {
 .knowledge-page {
   min-height: calc(100vh - 96px);
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .knowledge-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-  padding: 24px;
+  min-height: 172px;
+  padding: 26px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
-    linear-gradient(90deg, rgba(15, 118, 110, 0.1), transparent 42%),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.12), transparent 38%, rgba(168, 85, 30, 0.06)),
+    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.035) 0 1px, transparent 1px 16px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
 }
 
+.knowledge-hero::after {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  width: min(36%, 420px);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
+  content: '';
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 :global(html.dark) .knowledge-hero {
   background:
-    linear-gradient(90deg, rgba(45, 212, 191, 0.1), transparent 44%),
+    linear-gradient(90deg, rgba(53, 199, 183, 0.11), transparent 42%, rgba(216, 146, 69, 0.05)),
+    repeating-linear-gradient(135deg, rgba(220, 230, 221, 0.032) 0 1px, transparent 1px 16px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
     var(--app-surface);
 }
 
 .eyebrow {
   margin: 0 0 8px;
-  color: var(--app-primary);
+  color: var(--app-accent);
   font-size: 12px;
-  font-weight: 760;
+  font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -658,7 +695,7 @@ onBeforeUnmount(() => {
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-muted);
-  background: color-mix(in srgb, var(--app-surface-raised) 76%, transparent);
+  background: color-mix(in srgb, var(--app-surface-raised) 80%, transparent);
   box-shadow: var(--app-shadow-xs);
   font-size: 12px;
   font-weight: 650;
@@ -694,6 +731,7 @@ onBeforeUnmount(() => {
   border-radius: var(--app-radius-lg);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0)),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.025), transparent 54%, rgba(168, 85, 30, 0.018)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
@@ -704,6 +742,7 @@ onBeforeUnmount(() => {
 :global(html.dark) .kb-aside {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+    linear-gradient(90deg, rgba(53, 199, 183, 0.024), transparent 54%, rgba(216, 146, 69, 0.018)),
     var(--app-surface);
 }
 
@@ -834,7 +873,7 @@ onBeforeUnmount(() => {
 .doc-item.active {
   color: var(--app-primary);
   background:
-    linear-gradient(90deg, var(--app-primary-soft), var(--app-primary-softer));
+    linear-gradient(90deg, var(--app-primary-soft), var(--app-primary-softer) 74%, color-mix(in srgb, var(--app-accent-soft) 46%, transparent));
   box-shadow: inset 3px 0 0 var(--app-primary), var(--app-shadow-xs);
 }
 
@@ -874,7 +913,7 @@ onBeforeUnmount(() => {
   padding: 30px clamp(28px, 5vw, 58px) 24px;
   border-bottom: 1px solid var(--app-border-soft);
   background:
-    linear-gradient(90deg, rgba(15, 118, 110, 0.08), transparent 42%),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.09), transparent 42%, rgba(168, 85, 30, 0.035)),
     var(--app-surface);
 }
 
@@ -882,8 +921,9 @@ onBeforeUnmount(() => {
   max-width: 24ch;
   margin: 0;
   color: var(--app-text-heading);
-  font-size: clamp(28px, 3.3vw, 44px);
-  font-weight: 820;
+  font-family: var(--app-font-display);
+  font-size: 40px;
+  font-weight: 860;
   line-height: 1.08;
   text-wrap: balance;
 }
@@ -957,6 +997,7 @@ onBeforeUnmount(() => {
 .article-body :deep(h4) {
   margin: 2.1em 0 0.7em;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-weight: 780;
   line-height: 1.25;
   scroll-margin-top: 92px;
@@ -1115,6 +1156,7 @@ onBeforeUnmount(() => {
 .empty-copy h3 {
   margin: 0;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 24px;
 }
 

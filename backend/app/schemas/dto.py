@@ -156,4 +156,5 @@ class AgentResponse(BaseModel):
     references: list[dict]
     tool_calls: list[dict]
     plan: list[str]
-    mode: str = "openclaw-style"
+    mode: str = "local-openclaw"
+    knowledge_drafts: list[dict] = Field(default_factory=list)

@@ -1,12 +1,19 @@
 import json
+import shutil
+import subprocess
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Callable
+from urllib import error as url_error
+from urllib import request as url_request
 
 from sqlalchemy.orm import Session
 
 from app.models.entities import ChatHistory, KubeCluster, ServerAsset
-from app.services.ai_service import _recent_history, _resolve_llm
-from app.services.document_service import search_chunks
+from app.core.config import get_settings
+from app.models.entities import AppSetting
+from app.services.ai_service import _recent_history, _resolve_llm, optimize_document
+from app.services.document_service import create_knowledge_draft, search_chunks
 from app.services.docker_service import (
     container_action,
     docker_dashboard,
@@ -42,6 +49,7 @@ class AgentTool:
     description: str
     read_only: bool
     handler: ToolHandler
+    risk_level: str = "read"
 
 
 def _require_server(db: Session, context: dict[str, Any]) -> ServerAsset:
@@ -76,6 +84,36 @@ def _knowledge_search(db: Session, args: dict[str, Any], context: dict[str, Any]
         }
         for chunk in search_chunks(db, project, query, limit)
     ]
+
+
+def _knowledge_optimize_document(db: Session, _args: dict[str, Any], context: dict[str, Any]) -> dict:
+    document_id = context.get("document_id")
+    if not document_id:
+        raise ValueError("缺少 document_id")
+    instruction = context.get("instruction") or "优化为可执行运维知识库文档，保留来源中的命令、错误和环境信息。"
+    result = optimize_document(db, int(document_id), instruction)
+    optimized = result.get("optimized") or ""
+    return {
+        "document_id": int(document_id),
+        "mode": result.get("mode"),
+        "source_length": result.get("source_length"),
+        "optimized_preview": optimized[:4000],
+        "truncated": len(optimized) > 4000,
+    }
+
+
+def _knowledge_create_draft(db: Session, args: dict[str, Any], context: dict[str, Any]) -> dict:
+    title = context.get("draft_title") or f"Agent 知识草稿 - {args['goal'][:60]}"
+    markdown = context.get("draft_content")
+    if not markdown:
+        raise ValueError("缺少 draft_content")
+    document = create_knowledge_draft(db, title=title, markdown=markdown, project=args["project"], note="agent-tool")
+    return {
+        "document_id": document.id,
+        "title": document.title,
+        "project": document.project,
+        "status": document.status,
+    }
 
 
 def _ssh_overview(db: Session, _args: dict[str, Any], context: dict[str, Any]) -> dict:
@@ -217,9 +255,11 @@ def _k8s_scale_workload(db: Session, _args: dict[str, Any], context: dict[str, A
 
 
 TOOLS: dict[str, AgentTool] = {
-    "knowledge.search": AgentTool("knowledge.search", "knowledge", "检索腾讯知识库/本地知识库片段", True, _knowledge_search),
+    "knowledge.search": AgentTool("knowledge.search", "knowledge", "检索本地知识库片段", True, _knowledge_search),
+    "knowledge.optimize_document": AgentTool("knowledge.optimize_document", "knowledge", "生成知识库文档优化预览", True, _knowledge_optimize_document),
+    "knowledge.create_draft": AgentTool("knowledge.create_draft", "knowledge", "把 Agent 总结写入知识草稿", False, _knowledge_create_draft, "knowledge-write"),
     "ssh.overview": AgentTool("ssh.overview", "ssh", "读取服务器系统概览", True, _ssh_overview),
-    "ssh.command": AgentTool("ssh.command", "ssh", "执行受控 SSH 命令", False, _ssh_command),
+    "ssh.command": AgentTool("ssh.command", "ssh", "执行受控 SSH 命令", False, _ssh_command, "ops-write"),
     "ssh.files": AgentTool("ssh.files", "ssh", "浏览远程目录", True, _ssh_files),
     "ssh.file_read": AgentTool("ssh.file_read", "ssh", "读取远程文本文件", True, _ssh_file_read),
     "docker.dashboard": AgentTool("docker.dashboard", "docker", "读取 Docker 版本、信息和磁盘占用", True, _docker_dashboard),
@@ -230,17 +270,17 @@ TOOLS: dict[str, AgentTool] = {
     "docker.volumes": AgentTool("docker.volumes", "docker", "列出 Docker 卷", True, _docker_volumes),
     "docker.logs": AgentTool("docker.logs", "docker", "读取容器日志", True, _docker_logs),
     "docker.inspect": AgentTool("docker.inspect", "docker", "读取容器 Inspect 信息", True, _docker_inspect),
-    "docker.action": AgentTool("docker.action", "docker", "启动、停止、重启、暂停容器", False, _docker_action),
-    "docker.pull": AgentTool("docker.pull", "docker", "拉取 Docker 镜像", False, _docker_pull),
-    "docker.prune": AgentTool("docker.prune", "docker", "清理 Docker 资源", False, _docker_prune),
+    "docker.action": AgentTool("docker.action", "docker", "启动、停止、重启、暂停容器", False, _docker_action, "ops-write"),
+    "docker.pull": AgentTool("docker.pull", "docker", "拉取 Docker 镜像", False, _docker_pull, "ops-write"),
+    "docker.prune": AgentTool("docker.prune", "docker", "清理 Docker 资源", False, _docker_prune, "ops-write"),
     "k8s.overview": AgentTool("k8s.overview", "k8s", "读取 Kubernetes 集群概览", True, _k8s_overview),
     "k8s.pods": AgentTool("k8s.pods", "k8s", "列出 Pod", True, _k8s_pods),
     "k8s.events": AgentTool("k8s.events", "k8s", "读取集群事件", True, _k8s_events),
     "k8s.pod_logs": AgentTool("k8s.pod_logs", "k8s", "读取 Pod 日志", True, _k8s_pod_logs),
     "k8s.pod_describe": AgentTool("k8s.pod_describe", "k8s", "读取 Pod 诊断详情", True, _k8s_pod_describe),
-    "k8s.delete_pod": AgentTool("k8s.delete_pod", "k8s", "删除 Pod 触发重建", False, _k8s_delete_pod),
-    "k8s.restart_workload": AgentTool("k8s.restart_workload", "k8s", "重启工作负载", False, _k8s_restart_workload),
-    "k8s.scale_workload": AgentTool("k8s.scale_workload", "k8s", "伸缩工作负载", False, _k8s_scale_workload),
+    "k8s.delete_pod": AgentTool("k8s.delete_pod", "k8s", "删除 Pod 触发重建", False, _k8s_delete_pod, "ops-write"),
+    "k8s.restart_workload": AgentTool("k8s.restart_workload", "k8s", "重启工作负载", False, _k8s_restart_workload, "ops-write"),
+    "k8s.scale_workload": AgentTool("k8s.scale_workload", "k8s", "伸缩工作负载", False, _k8s_scale_workload, "ops-write"),
 }
 
 
@@ -251,6 +291,7 @@ def list_agent_tools() -> list[dict]:
             "module": tool.module,
             "description": tool.description,
             "read_only": tool.read_only,
+            "risk_level": tool.risk_level,
         }
         for tool in TOOLS.values()
     ]
@@ -261,6 +302,8 @@ def _infer_tools(goal: str, context: dict[str, Any], requested: list[str]) -> li
         return [name for name in requested if name in TOOLS]
     text = goal.lower()
     selected = ["knowledge.search"]
+    if context.get("document_id") and any(word in text for word in ["优化", "整理", "润色", "知识库", "文档", "runbook"]):
+        selected.append("knowledge.optimize_document")
     if context.get("server_id"):
         selected.append("ssh.overview")
         if "docker" in text or "容器" in text or "镜像" in text:
@@ -307,6 +350,285 @@ def _local_agent_answer(goal: str, tool_calls: list[dict], references: list[dict
             lines.append(f"- [{idx}] {ref.get('source')}")
     lines.extend(["", "未配置大模型 API Key 时，Agent 返回工具执行摘要。"])
     return "\n".join(lines)
+
+
+def _resolve_agent_runtime(db: Session) -> dict[str, str]:
+    env = get_settings()
+    keys = ["agent_runtime", "openclaw_endpoint", "openclaw_api_key", "openclaw_agent"]
+    db_cfg = {}
+    for row in db.query(AppSetting).filter(AppSetting.key.in_(keys)).all():
+        db_cfg[row.key] = row.value
+    return {
+        "runtime": db_cfg.get("agent_runtime") or env.agent_runtime,
+        "endpoint": db_cfg.get("openclaw_endpoint") or env.openclaw_endpoint or "",
+        "api_key": db_cfg.get("openclaw_api_key") or env.openclaw_api_key or "",
+        "agent": db_cfg.get("openclaw_agent") or env.openclaw_agent,
+    }
+
+
+def _call_openclaw_endpoint(runtime: dict[str, str], payload: dict[str, Any]) -> str:
+    endpoint = runtime["endpoint"].strip()
+    if not endpoint:
+        raise RuntimeError("OpenClaw endpoint 未配置")
+    if not endpoint.startswith(("http://", "https://")):
+        raise RuntimeError("OpenClaw endpoint 必须是完整 URL，API key/token 请填写到 API Key 字段")
+    body = json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if runtime["api_key"]:
+        headers["Authorization"] = f"Bearer {runtime['api_key']}"
+    req = url_request.Request(endpoint, data=body, headers=headers, method="POST")
+    try:
+        with url_request.urlopen(req, timeout=90) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except url_error.URLError as exc:
+        raise RuntimeError(str(exc)) from exc
+    answer = data.get("answer") or data.get("content") or data.get("message")
+    if not answer:
+        raise RuntimeError("OpenClaw 响应缺少 answer/content/message")
+    return str(answer)
+
+
+def _safe_openclaw_session_part(value: Any) -> str:
+    text = str(value or "default").strip()
+    safe = "".join(
+        ch if ch.isascii() and (ch.isalnum() or ch in "-_.") else "-"
+        for ch in text
+    ).strip("-")
+    return safe[:80] or "default"
+
+
+def _build_openclaw_cli_message(payload: dict[str, Any]) -> str:
+    return (
+        "你是 SmartOpsDocs 专用运维 Agent。请只基于工具结果、历史记录和知识库引用回答。"
+        "如果写操作被 dry-run 拦截，需要明确说明；知识库写入只能作为草稿建议。"
+        "下面是本次运维任务的结构化上下文，请用中文给出可执行、简洁的结论。\n\n"
+        f"{json.dumps(payload, ensure_ascii=False, default=str)}"
+    )
+
+
+def _extract_openclaw_cli_answer(data: dict[str, Any]) -> str:
+    result = data.get("result")
+    if isinstance(result, dict):
+        payloads = result.get("payloads")
+        if isinstance(payloads, list):
+            texts = [
+                str(item["text"]).strip()
+                for item in payloads
+                if isinstance(item, dict) and item.get("text")
+            ]
+            if texts:
+                return "\n\n".join(texts)
+        meta = result.get("meta")
+        if isinstance(meta, dict):
+            for key in ("finalAssistantVisibleText", "finalAssistantRawText", "text", "answer", "content"):
+                if meta.get(key):
+                    return str(meta[key]).strip()
+        for key in ("text", "answer", "content", "message", "summary"):
+            if result.get(key):
+                return str(result[key]).strip()
+    for key in ("answer", "content", "message", "summary"):
+        if data.get(key):
+            return str(data[key]).strip()
+    return ""
+
+
+def _call_openclaw_cli(runtime: dict[str, str], payload: dict[str, Any]) -> str:
+    openclaw = shutil.which("openclaw") or "/usr/local/bin/openclaw"
+    agent = (runtime.get("agent") or "main").strip() or "main"
+    project = _safe_openclaw_session_part(payload.get("project"))
+    session_id = _safe_openclaw_session_part(payload.get("session_id"))
+    session_key = f"agent:{agent}:smartopsdocs-{project}-{session_id}"
+    cmd = [
+        openclaw,
+        "agent",
+        "--agent",
+        agent,
+        "--session-key",
+        session_key,
+        "--message",
+        _build_openclaw_cli_message(payload),
+        "--json",
+        "--timeout",
+        "90",
+    ]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    except FileNotFoundError as exc:
+        raise RuntimeError("未找到 openclaw CLI，请先安装并确认 PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("OpenClaw CLI 调用超时") from exc
+
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or f"退出码 {proc.returncode}").strip()
+        raise RuntimeError(f"OpenClaw CLI 调用失败: {detail[:800]}")
+
+    try:
+        data = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"OpenClaw CLI 返回非 JSON: {proc.stdout[:500]}") from exc
+
+    if data.get("status") and data.get("status") != "ok":
+        raise RuntimeError(str(data.get("summary") or data.get("error") or "OpenClaw CLI 返回失败状态"))
+    answer = _extract_openclaw_cli_answer(data)
+    if not answer:
+        raise RuntimeError("OpenClaw CLI 响应缺少文本结果")
+    return answer
+
+
+def _generate_agent_answer(
+    db: Session,
+    project: str,
+    goal: str,
+    session_id: str,
+    context: dict[str, Any],
+    tool_calls: list[dict],
+    references: list[dict],
+) -> tuple[str, str]:
+    runtime = _resolve_agent_runtime(db)
+    history = _recent_history(db, project, session_id)
+    history_text = "\n".join(
+        f"用户: {item.question}\n助手: {(item.answer or '')[:800]}"
+        for item in history
+    )
+    runtime_payload = {
+        "agent": runtime["agent"],
+        "project": project,
+        "session_id": session_id,
+        "goal": goal,
+        "history": history_text or "无",
+        "context": context,
+        "tool_calls": tool_calls,
+        "references": references,
+        "policy": {
+            "source": "SmartOpsDocs",
+            "dry_run_enforced": True,
+            "external_data_is_untrusted": True,
+            "knowledge_writes_are_drafts": True,
+        },
+    }
+    if runtime["runtime"] == "openclaw":
+        try:
+            if runtime["endpoint"]:
+                return _call_openclaw_endpoint(runtime, runtime_payload), "openclaw"
+            return _call_openclaw_cli(runtime, runtime_payload), "openclaw-cli"
+        except Exception as exc:
+            fallback = _local_agent_answer(goal, tool_calls, references)
+            return f"OpenClaw 调用失败: {exc}\n\n{fallback}", "local-openclaw-fallback"
+
+    llm = _resolve_llm(db, "chat")
+    if llm["api_key"]:
+        try:
+            from openai import OpenAI
+
+            client = OpenAI(api_key=llm["api_key"], base_url=llm["base_url"])
+            completion = client.chat.completions.create(
+                model=llm["model"],
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是 SmartOpsDocs 专用运维 Agent。按 OpenClaw 风格工作：维护上下文，"
+                            "只能基于工具结果和知识库引用作答；写操作如果被 dry-run 拦截，必须明确说明。"
+                            "知识库写入只能生成草稿，不能覆盖正式文档。"
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": json.dumps(runtime_payload, ensure_ascii=False, default=str),
+                    },
+                ],
+            )
+            return completion.choices[0].message.content or "", "local-openclaw"
+        except Exception as exc:
+            return f"AI 调用失败: {exc}\n\n" + _local_agent_answer(goal, tool_calls, references), "local-openclaw-fallback"
+
+    return _local_agent_answer(goal, tool_calls, references), "local-openclaw"
+
+
+def _render_knowledge_draft(goal: str, answer: str, tool_calls: list[dict], references: list[dict]) -> str:
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+    tool_lines = []
+    for call in tool_calls:
+        status = call.get("status")
+        tool_lines.append(f"- `{call.get('tool')}`: {status}")
+    ref_lines = []
+    for index, ref in enumerate(references, 1):
+        ref_lines.append(f"- [{index}] {ref.get('source') or 'unknown'}")
+    return "\n".join(
+        [
+            f"# Agent 知识草稿：{goal[:80]}",
+            "",
+            "## 来源",
+            "",
+            f"- 生成时间：{timestamp}",
+            "- 来源类型：SmartOpsDocs Agent 会话",
+            "- 状态：草稿，需人工审核后作为正式知识使用",
+            "",
+            "## 问题",
+            "",
+            goal,
+            "",
+            "## Agent 回答",
+            "",
+            answer.strip() or "无回答内容",
+            "",
+            "## 工具调用",
+            "",
+            "\n".join(tool_lines) or "无工具调用",
+            "",
+            "## 知识库引用",
+            "",
+            "\n".join(ref_lines) or "无知识库引用",
+            "",
+            "## 审核清单",
+            "",
+            "- [ ] 验证命令、路径、IP、端口和集群/命名空间是否适用于当前环境",
+            "- [ ] 删除会话中不应长期保存的敏感信息",
+            "- [ ] 补充适用场景、前置条件和回滚方案",
+        ]
+    )
+
+
+def _maybe_create_agent_knowledge_draft(
+    db: Session,
+    project: str,
+    goal: str,
+    answer: str,
+    tool_calls: list[dict],
+    references: list[dict],
+    dry_run: bool,
+    context: dict[str, Any],
+) -> list[dict]:
+    if not context.get("auto_knowledge", True):
+        return []
+    if any(call.get("tool") == "knowledge.create_draft" for call in tool_calls):
+        return []
+    call = {
+        "tool": "knowledge.create_draft",
+        "module": "knowledge",
+        "read_only": False,
+        "status": "pending",
+        "result": None,
+    }
+    if dry_run:
+        call["status"] = "blocked_dry_run"
+        call["result"] = {"message": "已生成知识草稿内容，但 dry-run 拦截了写入。关闭 dry-run 后才会入库。"}
+        tool_calls.append(call)
+        return []
+    try:
+        markdown = _render_knowledge_draft(goal, answer, tool_calls, references)
+        title = f"Agent 知识草稿 - {goal[:48]}"
+        document = create_knowledge_draft(db, title=title, markdown=markdown, project=project, note="agent-auto-summary")
+        result = {"document_id": document.id, "title": document.title, "project": project, "status": document.status}
+        call["status"] = "ok"
+        call["result"] = result
+        tool_calls.append(call)
+        return [result]
+    except Exception as exc:
+        call["status"] = "error"
+        call["error"] = str(exc)
+        tool_calls.append(call)
+        return []
 
 
 def run_agent(
@@ -363,47 +685,17 @@ def run_agent(
             call["error"] = str(exc)
         tool_calls.append(call)
 
-    llm = _resolve_llm(db, "chat")
-    if llm["api_key"]:
-        try:
-            from openai import OpenAI
-
-            history = _recent_history(db, project, session_id)
-            history_text = "\n".join(
-                f"用户: {item.question}\n助手: {(item.answer or '')[:800]}"
-                for item in history
-            )
-            client = OpenAI(api_key=llm["api_key"], base_url=llm["base_url"])
-            completion = client.chat.completions.create(
-                model=llm["model"],
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "你是 SmartOpsDocs 运维 Agent。按 OpenClaw 风格工作：维护上下文，"
-                            "只能基于工具结果和知识库引用作答；写操作如果被 dry-run 拦截，必须明确说明。"
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": json.dumps(
-                            {
-                                "goal": goal,
-                                "history": history_text or "无",
-                                "context": context,
-                                "tool_calls": tool_calls,
-                            },
-                            ensure_ascii=False,
-                            default=str,
-                        ),
-                    },
-                ],
-            )
-            answer = completion.choices[0].message.content or ""
-        except Exception as exc:
-            answer = f"AI 调用失败: {exc}\n\n" + _local_agent_answer(goal, tool_calls, references)
-    else:
-        answer = _local_agent_answer(goal, tool_calls, references)
+    answer, mode = _generate_agent_answer(db, project, goal, session_id, context, tool_calls, references)
+    knowledge_drafts = _maybe_create_agent_knowledge_draft(
+        db,
+        project=project,
+        goal=goal,
+        answer=answer,
+        tool_calls=tool_calls,
+        references=references,
+        dry_run=dry_run,
+        context=context,
+    )
 
     db.add(
         ChatHistory(
@@ -420,5 +712,6 @@ def run_agent(
         "references": references,
         "tool_calls": tool_calls,
         "plan": plan,
-        "mode": "openclaw-style",
+        "mode": mode,
+        "knowledge_drafts": knowledge_drafts,
     }

@@ -46,8 +46,9 @@ function barPct(bar) {
 .bar-chart-title {
   margin-bottom: 12px;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 820;
 }
 
 .bars {
@@ -76,14 +77,15 @@ function barPct(bar) {
 .bar-track {
   flex: 1;
   height: 22px;
-  border-radius: 11px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius);
   background: var(--app-surface-soft);
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  border-radius: 11px;
+  border-radius: var(--app-radius);
   min-width: 4px;
 }
 
@@ -91,6 +93,7 @@ function barPct(bar) {
   width: 40px;
   text-align: right;
   color: var(--app-text-heading);
+  font-family: var(--app-font-mono);
   font-size: 14px;
   font-weight: 700;
   flex-shrink: 0;

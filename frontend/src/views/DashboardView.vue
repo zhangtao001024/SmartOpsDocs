@@ -1,8 +1,8 @@
 <template>
   <el-container class="layout" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
-    <el-aside :width="sidebarCollapsed ? '0px' : '230px'" class="sidebar">
+    <el-aside :width="sidebarCollapsed ? '0px' : '248px'" class="sidebar">
       <div class="brand">
-        <div class="brand-mark">S</div>
+        <div class="brand-mark">SD</div>
         <div>
           <div class="brand-name">SmartOpsDocs</div>
           <div class="brand-sub">Ops Knowledge</div>
@@ -35,7 +35,7 @@
           <el-button class="sidebar-toggle" text :icon="sidebarCollapsed ? 'Expand' : 'Fold'" @click="sidebarCollapsed = !sidebarCollapsed" />
           <div>
             <span>{{ currentTitle }}</span>
-            <small>Local workspace</small>
+            <small>{{ runtimeDetail }}</small>
           </div>
         </div>
         <div class="header-actions">
@@ -114,8 +114,9 @@ const runtimeLabel = computed(() => {
 const runtimeDetail = computed(() => {
   if (runtimeStatus.value === 'offline') return 'API :8000 无响应'
   if (runtimeStatus.value === 'degraded' && runtimeIssueText.value) return runtimeIssueText.value
-  if (!runtimeCounts.value) return 'API :8000'
-  return `${runtimeCounts.servers} 台资产 / ${runtimeCounts.documents} 篇文档`
+  const counts = runtimeCounts.value
+  if (!counts) return 'API :8000'
+  return `${counts.servers ?? 0} 台资产 / ${counts.documents ?? 0} 篇文档`
 })
 const runtimeIssueText = computed(() => {
   const issue = runtimeIssues.value[0]
@@ -145,7 +146,7 @@ function logout() {
 .layout {
   min-height: 100dvh;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.36), transparent 280px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 280px),
     transparent;
 }
 
@@ -156,18 +157,20 @@ function logout() {
   height: 100dvh;
   border-right: 1px solid var(--app-sidebar-border);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.74), transparent 34%),
+    repeating-linear-gradient(0deg, rgba(16, 23, 19, 0.025) 0 1px, transparent 1px 30px),
     var(--app-sidebar-bg);
   transition: width 0.25s ease, background-color 0.3s;
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  box-shadow: 8px 0 28px rgba(23, 49, 56, 0.04);
+  box-shadow: 10px 0 30px rgba(24, 45, 35, 0.055);
 }
 
 :global(html.dark) .sidebar {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 28%),
+    repeating-linear-gradient(0deg, rgba(220, 230, 221, 0.022) 0 1px, transparent 1px 30px),
     var(--app-sidebar-bg);
 }
 
@@ -175,31 +178,35 @@ function logout() {
   display: flex;
   gap: 12px;
   align-items: center;
-  height: 76px;
-  padding: 0 20px;
+  height: 82px;
+  padding: 0 18px;
   border-bottom: 1px solid var(--app-border-soft);
   white-space: nowrap;
 }
 
 .brand-mark {
   display: grid;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--app-radius-md);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--app-radius);
   color: #fff;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 38%),
+    linear-gradient(160deg, var(--app-primary), var(--app-primary-strong) 62%, var(--app-accent)),
     var(--app-primary);
-  font-weight: 800;
-  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  font-family: var(--app-font-display);
+  font-size: 13px;
+  font-weight: 860;
+  box-shadow: 0 12px 26px rgba(12, 118, 111, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.24);
   place-items: center;
   flex-shrink: 0;
 }
 
 .brand-name {
   color: var(--app-text-heading);
-  font-size: 17px;
-  font-weight: 800;
+  font-family: var(--app-font-display);
+  font-size: 18px;
+  font-weight: 840;
   line-height: 1.2;
 }
 
@@ -216,7 +223,7 @@ function logout() {
 
 :deep(.el-menu) {
   border-right: 0;
-  padding: 14px 10px;
+  padding: 16px 12px;
 }
 
 .nav-section-label {
@@ -233,7 +240,7 @@ function logout() {
   margin-bottom: 5px;
   border-radius: var(--app-radius);
   color: var(--app-text-soft);
-  font-weight: 650;
+  font-weight: 720;
   transition: background-color 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
 }
 
@@ -251,8 +258,8 @@ function logout() {
 :deep(.el-menu-item.is-active) {
   color: var(--app-primary);
   background:
-    linear-gradient(90deg, var(--app-primary-soft), var(--app-primary-softer));
-  box-shadow: inset 3px 0 0 var(--app-primary), 0 1px 0 rgba(255, 255, 255, 0.58) inset;
+    linear-gradient(90deg, var(--app-primary-soft), var(--app-primary-softer) 74%, color-mix(in srgb, var(--app-accent-soft) 46%, transparent));
+  box-shadow: inset 3px 0 0 var(--app-primary), inset -1px 0 0 color-mix(in srgb, var(--app-accent) 18%, transparent), 0 1px 0 rgba(255, 255, 255, 0.58) inset;
 }
 
 :deep(.el-menu-item.is-active .el-icon) {
@@ -263,7 +270,7 @@ function logout() {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin: 10px;
+  margin: 12px;
   padding: 13px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
@@ -327,10 +334,10 @@ function logout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 68px;
+  height: 70px;
   border-bottom: 1px solid var(--app-header-border);
   background: var(--app-header-bg);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px) saturate(1.05);
   transition: background-color 0.3s, border-color 0.3s;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.42) inset;
 }
@@ -345,15 +352,21 @@ function logout() {
 .header-title span {
   display: block;
   color: var(--app-text-heading);
-  font-size: 17px;
+  font-family: var(--app-font-display);
+  font-size: 18px;
+  font-weight: 820;
   line-height: 1.2;
 }
 
 .header-title small {
   color: var(--app-muted);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 620;
   display: block;
+  max-width: min(52vw, 640px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-actions {
@@ -367,9 +380,9 @@ function logout() {
 }
 
 .main-content {
-  width: min(100%, 1480px);
+  width: min(100%, 1540px);
   margin: 0 auto;
-  padding: 28px;
+  padding: 30px;
 }
 
 /* ---- Responsive ---- */

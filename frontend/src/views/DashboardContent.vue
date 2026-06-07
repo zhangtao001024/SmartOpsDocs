@@ -148,28 +148,44 @@ onMounted(load)
 <style scoped>
 .dashboard-page {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .overview-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-  min-height: 168px;
-  padding: 24px;
+  min-height: 180px;
+  padding: 26px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
-    linear-gradient(90deg, rgba(15, 118, 110, 0.12), transparent 38%),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.13), transparent 38%, rgba(168, 85, 30, 0.065)),
+    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.035) 0 1px, transparent 1px 16px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
 }
 
+.overview-hero::after {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  width: min(38%, 440px);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
+  content: '';
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 :global(html.dark) .overview-hero {
   background:
-    linear-gradient(90deg, rgba(45, 212, 191, 0.12), transparent 42%),
+    linear-gradient(90deg, rgba(53, 199, 183, 0.12), transparent 42%, rgba(216, 146, 69, 0.05)),
+    repeating-linear-gradient(135deg, rgba(220, 230, 221, 0.032) 0 1px, transparent 1px 16px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
     var(--app-surface);
 }
@@ -177,9 +193,9 @@ onMounted(load)
 .eyebrow,
 .panel-kicker {
   margin: 0 0 8px;
-  color: var(--app-primary);
+  color: var(--app-accent);
   font-size: 12px;
-  font-weight: 760;
+  font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -207,7 +223,7 @@ onMounted(load)
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-muted);
-  background: color-mix(in srgb, var(--app-surface-raised) 74%, transparent);
+  background: color-mix(in srgb, var(--app-surface-raised) 80%, transparent);
   box-shadow: var(--app-shadow-xs);
   font-size: 12px;
   font-weight: 650;
@@ -236,7 +252,7 @@ onMounted(load)
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius);
   color: var(--app-muted);
-  background: var(--app-surface-soft);
+  background: color-mix(in srgb, var(--app-surface-soft) 80%, transparent);
   font-size: 12px;
   font-weight: 680;
 }
@@ -256,18 +272,28 @@ onMounted(load)
 }
 
 .stat-card {
+  position: relative;
+  overflow: hidden;
   display: grid;
   align-content: space-between;
   gap: 18px;
-  min-height: 124px;
+  min-height: 134px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
   padding: 20px;
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+}
+
+.stat-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: color-mix(in srgb, var(--app-border-strong) 56%, transparent);
+  content: '';
 }
 
 :global(html.dark) .stat-card {
@@ -283,8 +309,13 @@ onMounted(load)
 
 .stat-card.primary {
   background:
-    linear-gradient(135deg, rgba(15, 118, 110, 0.14), transparent 68%),
+    linear-gradient(135deg, rgba(12, 118, 111, 0.15), transparent 62%),
+    linear-gradient(160deg, transparent 56%, color-mix(in srgb, var(--app-accent-soft) 55%, transparent)),
     var(--app-primary-softer);
+}
+
+.stat-card.primary::before {
+  background: var(--app-primary);
 }
 
 .stat-head {
@@ -306,8 +337,9 @@ onMounted(load)
 
 .stat-num {
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 36px;
-  font-weight: 820;
+  font-weight: 860;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
@@ -327,7 +359,7 @@ onMounted(load)
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(420px, 1.25fr);
+  grid-template-columns: minmax(300px, 0.95fr) minmax(420px, 1.25fr);
   gap: 16px;
 }
 
@@ -353,6 +385,7 @@ onMounted(load)
 .panel-copy h3,
 .quick-panel h3 {
   margin: 0;
+  font-family: var(--app-font-display);
   font-size: 18px;
   color: var(--app-text-heading);
 }
@@ -396,7 +429,7 @@ onMounted(load)
   grid-column: 1 / -1;
   gap: 18px;
   background:
-    linear-gradient(90deg, var(--app-surface), var(--app-primary-softer));
+    linear-gradient(90deg, var(--app-surface), var(--app-primary-softer) 70%, color-mix(in srgb, var(--app-accent-soft) 48%, transparent));
 }
 
 .quick-panel p {

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     openai_vision_model: str | None = None
     docx_vision_max_images: int = 20
+    agent_runtime: str = "local-openclaw"
+    openclaw_endpoint: str | None = None
+    openclaw_api_key: str | None = None
+    openclaw_agent: str = "smartopsdocs-ops-agent"
 
 
 @lru_cache

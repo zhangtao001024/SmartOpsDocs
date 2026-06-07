@@ -550,6 +550,28 @@ def save_document_markdown(db: Session, document: Document, markdown: str, note:
     db.commit()
 
 
+def create_knowledge_draft(
+    db: Session,
+    title: str,
+    markdown: str,
+    project: str = "default",
+    note: str = "agent-draft",
+) -> Document:
+    """创建可检索的知识草稿，不覆盖正式文档。调用方负责 commit。"""
+    document = Document(title=title.strip()[:255] or "Agent 知识草稿", file_path="", project=project, status="draft")
+    db.add(document)
+    db.flush()
+    workspace = document_workspace(document.id)
+    workspace.mkdir(parents=True, exist_ok=True)
+    document.file_path = str(document_markdown_path(document.id))
+    document_markdown_path(document.id).write_text(markdown, encoding="utf-8")
+    rebuild_document_chunks(db, document, markdown)
+    create_document_revision(db, document, markdown, note=note)
+    document.error_message = ""
+    db.flush()
+    return document
+
+
 def rebuild_document_chunks(db: Session, document: Document, markdown: str) -> None:
     chunks = split_text(clean_text(markdown))
     _ensure_fts(db)

@@ -946,14 +946,14 @@ onBeforeUnmount(() => {
 <style scoped>
 .k8s-console {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .eyebrow {
   margin: 0 0 5px;
-  color: var(--app-muted);
+  color: var(--app-accent);
   font-size: 12px;
-  font-weight: 760;
+  font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -972,7 +972,7 @@ onBeforeUnmount(() => {
 
 .k8s-workbench {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  grid-template-columns: 272px minmax(0, 1fr) 330px;
   gap: 18px;
   min-height: 680px;
   padding: 16px;
@@ -983,7 +983,8 @@ onBeforeUnmount(() => {
   min-width: 0;
   border-radius: var(--app-radius-md);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-raised) 58%, transparent), transparent),
+    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-raised) 64%, transparent), transparent),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.026), transparent 58%, rgba(168, 85, 30, 0.018)),
     var(--app-surface-soft);
   box-shadow: var(--app-shadow-xs);
 }
@@ -993,6 +994,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 14px;
   padding: 14px;
+  max-height: calc(100dvh - 188px);
+  overflow: auto;
 }
 
 .cluster-card {
@@ -1001,12 +1004,15 @@ onBeforeUnmount(() => {
   padding: 14px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
-  background: var(--app-surface);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-raised) 78%, transparent), transparent),
+    var(--app-surface);
   box-shadow: var(--app-shadow-xs);
 }
 
 .cluster-card strong {
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 16px;
   font-weight: 760;
   overflow-wrap: anywhere;
@@ -1058,7 +1064,7 @@ onBeforeUnmount(() => {
 
 .nav-row {
   padding: 9px 10px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .resource-row {
@@ -1080,7 +1086,7 @@ onBeforeUnmount(() => {
 .resource-row.active {
   color: var(--app-primary);
   background:
-    linear-gradient(90deg, var(--app-primary-soft), var(--app-primary-softer));
+    linear-gradient(90deg, var(--app-primary-soft), var(--app-primary-softer) 74%, color-mix(in srgb, var(--app-accent-soft) 46%, transparent));
   box-shadow: inset 3px 0 0 var(--app-primary);
 }
 
@@ -1112,14 +1118,15 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0 2px;
+  padding: 12px 0 4px;
 }
 
 .ops-bar h3 {
   margin: 0;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 18px;
-  font-weight: 760;
+  font-weight: 820;
 }
 
 .ops-bar p {
@@ -1151,16 +1158,26 @@ onBeforeUnmount(() => {
 }
 
 .summary-card {
+  position: relative;
+  overflow: hidden;
   min-height: 112px;
   padding: 15px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-raised) 72%, transparent), transparent),
+    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-raised) 76%, transparent), transparent),
     var(--app-surface-soft);
   display: grid;
   align-content: space-between;
   box-shadow: var(--app-shadow-xs);
+}
+
+.summary-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: color-mix(in srgb, var(--app-border-strong) 58%, transparent);
+  content: '';
 }
 
 .summary-card span,
@@ -1170,8 +1187,9 @@ onBeforeUnmount(() => {
 
 .summary-card strong {
   color: var(--app-text-heading);
-  font-family: var(--app-font-mono);
+  font-family: var(--app-font-display);
   font-size: 27px;
+  font-weight: 840;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1202,7 +1220,9 @@ onBeforeUnmount(() => {
   padding: 13px;
   border-left: 3px solid var(--app-primary);
   border-radius: var(--app-radius);
-  background: var(--app-surface-soft);
+  background:
+    linear-gradient(90deg, var(--app-primary-softer), transparent),
+    var(--app-surface-soft);
 }
 
 .focus-row span {
@@ -1213,7 +1233,7 @@ onBeforeUnmount(() => {
 
 .focus-row strong {
   color: var(--app-text-heading);
-  font-family: var(--app-font-mono);
+  font-family: var(--app-font-display);
   font-size: 19px;
 }
 
@@ -1246,6 +1266,7 @@ onBeforeUnmount(() => {
 .detail-heading h3 {
   margin: 0;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 18px;
   font-weight: 760;
   line-height: 1.35;
@@ -1266,6 +1287,7 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--app-radius);
+  border: 1px solid var(--app-border-soft);
   background: var(--app-surface);
 }
 
@@ -1327,12 +1349,12 @@ onBeforeUnmount(() => {
 }
 
 :deep(.el-table__row.is-selected-row > td.el-table__cell) {
-  background: var(--app-primary-softer);
+  background: color-mix(in srgb, var(--app-primary-softer) 82%, var(--app-accent-soft));
 }
 
 @media (max-width: 1320px) {
   .k8s-workbench {
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 248px minmax(0, 1fr);
   }
 
   .resource-detail {
@@ -1355,7 +1377,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
-  .k8s-header,
+  .console-hero,
   .header-actions,
   .ops-bar {
     align-items: stretch;

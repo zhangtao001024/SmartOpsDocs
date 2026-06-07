@@ -97,7 +97,8 @@ function arcOffset(i) {
 
 .donut-total {
   font-size: 26px;
-  font-weight: 800;
+  font-family: var(--app-font-display);
+  font-weight: 860;
   color: var(--app-text-heading);
 }
 

@@ -2,7 +2,7 @@
   <main class="login-page">
     <section class="login-copy" aria-label="SmartOpsDocs">
       <div class="brand-lockup">
-        <div class="brand-mark">S</div>
+        <div class="brand-mark">SD</div>
         <div>
           <div class="brand-name">SmartOpsDocs</div>
           <div class="brand-sub">Ops Knowledge Workspace</div>
@@ -24,6 +24,13 @@
           <span>Agent</span>
           <strong>Dry-run first</strong>
         </div>
+      </div>
+      <div class="login-diagram" aria-hidden="true">
+        <span class="diagram-node primary">Assets</span>
+        <span class="diagram-line"></span>
+        <span class="diagram-node">Docs</span>
+        <span class="diagram-line accent"></span>
+        <span class="diagram-node">Agent</span>
       </div>
     </section>
 
@@ -92,12 +99,11 @@ async function login() {
   gap: clamp(44px, 7vw, 108px);
   padding: clamp(28px, 6vw, 72px);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.62), transparent 360px),
-    linear-gradient(90deg, rgba(15, 118, 110, 0.11), transparent 42%, rgba(16, 24, 32, 0.055)),
-    linear-gradient(rgba(16, 24, 32, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(16, 24, 32, 0.028) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), transparent 340px),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.12), transparent 44%, rgba(168, 85, 30, 0.06)),
+    repeating-linear-gradient(0deg, rgba(16, 23, 19, 0.03) 0 1px, transparent 1px 30px),
+    repeating-linear-gradient(90deg, rgba(16, 23, 19, 0.026) 0 1px, transparent 1px 30px),
     var(--app-bg);
-  background-size: auto, auto, 30px 30px, 30px 30px, auto;
   transition: background-color 0.3s;
 }
 
@@ -114,22 +120,26 @@ async function login() {
 
 .brand-mark {
   display: grid;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--app-radius-md);
+  width: 48px;
+  height: 48px;
+  border-radius: var(--app-radius);
   color: #fff;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 40%),
+    linear-gradient(160deg, var(--app-primary), var(--app-primary-strong) 62%, var(--app-accent)),
     var(--app-primary);
-  box-shadow: 0 14px 32px rgba(15, 118, 110, 0.22);
-  font-weight: 820;
+  box-shadow: 0 16px 34px rgba(12, 118, 111, 0.24);
+  font-family: var(--app-font-display);
+  font-size: 14px;
+  font-weight: 860;
   place-items: center;
 }
 
 .brand-name {
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 18px;
-  font-weight: 820;
+  font-weight: 840;
   line-height: 1.15;
 }
 
@@ -141,9 +151,9 @@ async function login() {
 
 .eyebrow {
   margin: 0 0 14px;
-  color: var(--app-primary);
+  color: var(--app-accent);
   font-size: 12px;
-  font-weight: 760;
+  font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -152,8 +162,9 @@ h1 {
   max-width: 12.5ch;
   margin: 0;
   color: var(--app-text-heading);
-  font-size: clamp(56px, 6.4vw, 86px);
-  font-weight: 820;
+  font-family: var(--app-font-display);
+  font-size: 74px;
+  font-weight: 860;
   line-height: 0.96;
   text-wrap: balance;
 }
@@ -177,9 +188,10 @@ h1 {
   min-height: 92px;
   padding: 16px;
   border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
+  border-radius: var(--app-radius-md);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.64), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), transparent),
+    linear-gradient(135deg, rgba(12, 118, 111, 0.055), transparent 58%),
     rgba(251, 252, 253, 0.78);
   box-shadow: var(--app-shadow);
 }
@@ -203,6 +215,48 @@ h1 {
   font-weight: 760;
 }
 
+.login-diagram {
+  display: grid;
+  grid-template-columns: auto minmax(36px, 120px) auto minmax(36px, 120px) auto;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 620px);
+  margin-top: 28px;
+  padding: 12px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius-md);
+  background: color-mix(in srgb, var(--app-surface-raised) 74%, transparent);
+  box-shadow: var(--app-shadow-xs);
+}
+
+.diagram-node {
+  min-width: 86px;
+  padding: 9px 10px;
+  border: 1px solid var(--app-border-soft);
+  border-radius: var(--app-radius);
+  color: var(--app-text-heading);
+  background: var(--app-surface-soft);
+  font-family: var(--app-font-mono);
+  font-size: 12px;
+  font-weight: 760;
+  text-align: center;
+}
+
+.diagram-node.primary {
+  border-color: var(--app-primary-border);
+  color: var(--app-primary);
+  background: var(--app-primary-softer);
+}
+
+.diagram-line {
+  height: 1px;
+  background: linear-gradient(90deg, var(--app-primary-border), var(--app-border-strong));
+}
+
+.diagram-line.accent {
+  background: linear-gradient(90deg, var(--app-border-strong), var(--app-accent));
+}
+
 .login-panel {
   position: relative;
   overflow: hidden;
@@ -211,7 +265,8 @@ h1 {
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0)),
+    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.025) 0 1px, transparent 1px 18px),
     var(--app-surface);
   box-shadow: var(--app-shadow-lg);
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
@@ -221,7 +276,7 @@ h1 {
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, var(--app-primary), var(--app-primary-border), transparent);
+  background: linear-gradient(90deg, var(--app-primary), var(--app-primary-border), var(--app-accent), transparent);
   content: '';
 }
 
@@ -237,14 +292,15 @@ h1 {
 
 .panel-header p {
   margin: 0 0 8px;
-  color: var(--app-primary);
+  color: var(--app-accent);
   font-size: 12px;
-  font-weight: 760;
+  font-weight: 800;
 }
 
 .panel-header h2 {
   margin: 0;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 26px;
   line-height: 1.25;
 }
@@ -299,6 +355,7 @@ h1 {
 
   h1 {
     max-width: 14ch;
+    font-size: 56px;
   }
 
   .login-panel {
@@ -313,6 +370,20 @@ h1 {
 
   .signal-grid {
     grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 42px;
+  }
+
+  .login-diagram {
+    grid-template-columns: 1fr;
+  }
+
+  .diagram-line {
+    width: 1px;
+    height: 24px;
+    justify-self: center;
   }
 
   .login-panel {

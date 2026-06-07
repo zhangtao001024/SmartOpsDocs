@@ -9,6 +9,9 @@
           <span><strong>{{ mode === 'agent' ? 'Agent' : 'Knowledge' }}</strong> 当前模式</span>
           <span><strong>{{ messages.length }}</strong> 历史消息</span>
           <span><strong>{{ activeContextCount }}</strong> 上下文项</span>
+          <span v-if="mode === 'agent'" :class="{ 'run-status-live': !dryRun }">
+            <strong>{{ dryRun ? 'Dry-run' : '真实执行' }}</strong> 写操作
+          </span>
         </div>
       </div>
       <div class="chat-actions">
@@ -16,6 +19,13 @@
           <el-radio-button label="knowledge">知识库问答</el-radio-button>
           <el-radio-button label="agent">运维 Agent</el-radio-button>
         </el-radio-group>
+        <div v-if="mode === 'agent'" :class="['dry-run-control', { 'is-live': !dryRun }]">
+          <span>
+            <strong>{{ dryRun ? 'Dry-run 已开启' : 'Dry-run 已关闭' }}</strong>
+            <small>{{ dryRun ? '写操作会被拦截' : '允许写操作' }}</small>
+          </span>
+          <el-switch v-model="dryRun" inline-prompt active-text="拦" inactive-text="写" />
+        </div>
         <el-input v-model="project" class="project-input" placeholder="知识库项目" />
         <el-button icon="Delete" text @click="clearHistory">清空历史</el-button>
       </div>
@@ -63,12 +73,18 @@
                 :value="tool.name"
               >
                 <span>{{ tool.name }}</span>
-                <span class="tool-module">{{ tool.read_only ? '只读' : '写操作' }}</span>
+                <span class="tool-module">{{ tool.read_only ? '只读' : tool.risk_level || '写操作' }}</span>
               </el-option>
             </el-select>
           </el-form-item>
+          <el-form-item label="文档 ID">
+            <el-input-number v-model="agentContext.document_id" :min="1" controls-position="right" placeholder="用于优化知识库文档" />
+          </el-form-item>
           <el-form-item>
             <el-switch v-model="dryRun" active-text="拦截写操作" inactive-text="允许写操作" />
+          </el-form-item>
+          <el-form-item>
+            <el-switch v-model="autoKnowledge" active-text="生成知识草稿" inactive-text="不沉淀知识" />
           </el-form-item>
         </el-form>
       </aside>
@@ -98,6 +114,19 @@
                 <pre v-else>{{ formatToolResult(call.result) }}</pre>
               </div>
             </div>
+            <div v-if="message.mode || message.knowledge_drafts?.length" class="runtime-meta">
+              <el-tag v-if="message.mode" size="small" effect="plain">{{ message.mode }}</el-tag>
+              <el-tag
+                v-for="draft in message.knowledge_drafts || []"
+                :key="draft.document_id"
+                size="small"
+                type="success"
+                effect="plain"
+                @click="openDraft(draft)"
+              >
+                草稿 #{{ draft.document_id }}
+              </el-tag>
+            </div>
             <div v-if="message.references?.length" class="refs">
               <el-tag
                 v-for="(ref, i) in message.references"
@@ -116,7 +145,7 @@
           <div class="bubble typing">思考中<span class="dots"></span></div>
         </div>
       </div>
-      <div class="composer">
+      <div class="composer" :class="{ 'with-run-control': mode === 'agent' }">
         <el-input
           v-model="question"
           type="textarea"
@@ -125,18 +154,39 @@
           @keydown.enter="onEnter"
           :disabled="loading"
         />
+        <div v-if="mode === 'agent'" :class="['composer-run-control', { 'is-live': !dryRun }]">
+          <span>{{ dryRun ? 'Dry-run' : '真实执行' }}</span>
+          <el-switch v-model="dryRun" inline-prompt active-text="拦" inactive-text="写" />
+        </div>
         <el-button type="primary" icon="Promotion" :loading="loading" @click="send" :disabled="!question.trim()">发送</el-button>
       </div>
       </div>
     </div>
 
+    <Teleport to="body">
+      <transition name="confirm-fade">
+        <div v-if="clearConfirmVisible" class="confirm-overlay" @click.self="closeClearConfirm">
+          <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="clear-history-title">
+            <div class="confirm-mark">!</div>
+            <div class="confirm-copy">
+              <h3 id="clear-history-title">清空聊天历史</h3>
+              <p>只会删除当前浏览器保存的聊天记录，并重新开始一个会话；不会删除知识库、服务器资产或 OpenClaw 会话文件。</p>
+            </div>
+            <div class="confirm-actions">
+              <button type="button" class="confirm-button secondary" @click="closeClearConfirm">取消</button>
+              <button type="button" class="confirm-button danger" @click="confirmClearHistory">清空历史</button>
+            </div>
+          </section>
+        </div>
+      </transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { marked } from 'marked'
 import client, { getApiErrorMessage } from '../api/client'
 
@@ -152,18 +202,21 @@ const loading = ref(false)
 const messages = ref([])
 const msgBox = ref(null)
 const sessionId = ref(Date.now().toString(36))
+const clearConfirmVisible = ref(false)
 const servers = ref([])
 const clusters = ref([])
 const namespaces = ref([])
 const tools = ref([])
 const selectedTools = ref([])
 const dryRun = ref(true)
+const autoKnowledge = ref(true)
 const agentContext = reactive({
   server_id: null,
   cluster_id: null,
   namespace: '',
   container_id: '',
   pod_name: '',
+  document_id: null,
   path: '',
   command: '',
   timeout: 30,
@@ -171,10 +224,11 @@ const agentContext = reactive({
 })
 
 const activeContextCount = computed(() => {
-  const contextCount = Object.values(agentContext).filter((value) => {
+  const contextCount = Object.entries(agentContext).filter(([key, value]) => {
+    if (['timeout', 'tail'].includes(key)) return false
     return value !== null && value !== undefined && String(value).trim() !== ''
   }).length
-  return contextCount + selectedTools.value.length
+  return contextCount + selectedTools.value.length + (autoKnowledge.value ? 1 : 0)
 })
 
 function renderMd(text) {
@@ -197,12 +251,19 @@ function saveHistory() {
 }
 
 function clearHistory() {
-  ElMessageBox.confirm('确定清空所有聊天记录？', '确认', { type: 'warning', center: true }).then(() => {
-    messages.value = []
-    localStorage.removeItem(STORAGE_KEY)
-    sessionId.value = Date.now().toString(36)
-    ElMessage.success('已清空')
-  }).catch(() => {})
+  clearConfirmVisible.value = true
+}
+
+function closeClearConfirm() {
+  clearConfirmVisible.value = false
+}
+
+function confirmClearHistory() {
+  messages.value = []
+  localStorage.removeItem(STORAGE_KEY)
+  sessionId.value = Date.now().toString(36)
+  clearConfirmVisible.value = false
+  ElMessage.success('已清空')
 }
 
 function scrollBottom() {
@@ -235,7 +296,12 @@ function buildAgentContext() {
   Object.entries(agentContext).forEach(([key, value]) => {
     if (value !== null && value !== undefined && String(value).trim() !== '') context[key] = value
   })
+  context.auto_knowledge = autoKnowledge.value
   return context
+}
+
+function openDraft(draft) {
+  if (draft.document_id) router.push({ path: '/documents', query: { doc: draft.document_id } })
 }
 
 async function loadAgentMeta() {
@@ -293,7 +359,9 @@ async function send() {
       role: 'assistant',
       content: data.answer,
       references: data.references,
-      tool_calls: data.tool_calls || []
+      tool_calls: data.tool_calls || [],
+      mode: data.mode,
+      knowledge_drafts: data.knowledge_drafts || []
     })
     saveHistory()
   } catch (error) {
@@ -319,27 +387,44 @@ onMounted(() => {
 <style scoped>
 .chat-page {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .chat-hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-  padding: 24px;
+  min-height: 172px;
+  padding: 26px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
   background:
-    linear-gradient(90deg, rgba(15, 118, 110, 0.1), transparent 42%),
+    linear-gradient(90deg, rgba(12, 118, 111, 0.12), transparent 38%, rgba(168, 85, 30, 0.06)),
+    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.035) 0 1px, transparent 1px 16px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.18)),
     var(--app-surface);
   box-shadow: var(--app-shadow);
 }
 
+.chat-hero::after {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  width: min(36%, 420px);
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--app-primary-border), var(--app-accent));
+  content: '';
+  opacity: 0.72;
+  pointer-events: none;
+}
+
 :global(html.dark) .chat-hero {
   background:
-    linear-gradient(90deg, rgba(45, 212, 191, 0.1), transparent 44%),
+    linear-gradient(90deg, rgba(53, 199, 183, 0.11), transparent 42%, rgba(216, 146, 69, 0.05)),
+    repeating-linear-gradient(135deg, rgba(220, 230, 221, 0.032) 0 1px, transparent 1px 16px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
     var(--app-surface);
 }
@@ -360,7 +445,7 @@ onMounted(() => {
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius);
   color: var(--app-muted);
-  background: color-mix(in srgb, var(--app-surface-raised) 76%, transparent);
+  background: color-mix(in srgb, var(--app-surface-raised) 80%, transparent);
   box-shadow: var(--app-shadow-xs);
   font-size: 12px;
   font-weight: 650;
@@ -371,12 +456,66 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.chat-status-strip .run-status-live {
+  border-color: color-mix(in srgb, var(--app-danger) 46%, var(--app-border-soft));
+  color: var(--app-danger);
+  background: color-mix(in srgb, var(--app-danger) 10%, var(--app-surface-raised));
+}
+
 .chat-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
+}
+
+.dry-run-control,
+.composer-run-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--app-warning) 42%, var(--app-border-soft));
+  border-radius: var(--app-radius);
+  background: color-mix(in srgb, var(--app-warning) 9%, var(--app-surface-raised));
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-xs);
+}
+
+.dry-run-control {
+  min-height: 42px;
+  padding: 6px 10px 6px 12px;
+}
+
+.dry-run-control span {
+  display: grid;
+  gap: 2px;
+  min-width: 106px;
+}
+
+.dry-run-control strong,
+.composer-run-control span {
+  color: var(--app-text-heading);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+.dry-run-control small {
+  color: var(--app-muted);
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.dry-run-control.is-live,
+.composer-run-control.is-live {
+  border-color: color-mix(in srgb, var(--app-danger) 58%, var(--app-border-soft));
+  background: color-mix(in srgb, var(--app-danger) 11%, var(--app-surface-raised));
+}
+
+.dry-run-control.is-live strong,
+.composer-run-control.is-live span {
+  color: var(--app-danger);
 }
 
 .project-input {
@@ -412,6 +551,7 @@ onMounted(() => {
 .context-header h3 {
   margin: 0;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 16px;
 }
 
@@ -423,6 +563,10 @@ onMounted(() => {
   float: right;
   color: var(--app-muted-soft);
   font-size: 12px;
+}
+
+.context-form :deep(.el-input-number) {
+  width: 100%;
 }
 
 .chat {
@@ -442,10 +586,14 @@ onMounted(() => {
   width: min(100%, 560px);
   margin: 72px auto 0;
   padding: 28px;
-  border: 1px dashed var(--app-border);
+  border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-lg);
   color: var(--app-muted);
-  background: var(--app-surface-soft);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-raised) 70%, transparent), transparent),
+    repeating-linear-gradient(135deg, rgba(16, 23, 19, 0.025) 0 1px, transparent 1px 18px),
+    var(--app-surface-soft);
+  box-shadow: var(--app-shadow-xs);
   text-align: center;
 }
 
@@ -458,6 +606,7 @@ onMounted(() => {
 .empty-hint h3 {
   margin: 14px 0 0;
   color: var(--app-text-heading);
+  font-family: var(--app-font-display);
   font-size: 20px;
 }
 
@@ -521,7 +670,9 @@ onMounted(() => {
   padding: 13px 16px;
   border: 1px solid var(--app-border-soft);
   border-radius: var(--app-radius-md);
-  background: var(--app-surface-raised);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--app-surface-raised) 84%, transparent), transparent),
+    var(--app-surface-raised);
   box-shadow: var(--app-shadow-xs);
   line-height: 1.7;
   transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
@@ -531,9 +682,10 @@ onMounted(() => {
   border-color: var(--app-primary);
   color: #fff;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.15), transparent),
+    linear-gradient(140deg, transparent 58%, color-mix(in srgb, var(--app-accent) 34%, transparent)),
     var(--app-primary);
-  box-shadow: 0 10px 26px rgba(15, 118, 110, 0.18);
+  box-shadow: 0 10px 26px rgba(12, 118, 111, 0.2);
 }
 
 .message.user .bubble .text {
@@ -638,6 +790,7 @@ onMounted(() => {
 .tool-call {
   padding: 10px;
   border-radius: var(--app-radius);
+  border: 1px solid var(--app-border-soft);
   background: var(--app-code-bg);
 }
 
@@ -667,6 +820,19 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.runtime-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--app-border-soft);
+}
+
+.runtime-meta .el-tag {
+  cursor: pointer;
+}
+
 .ref-tag {
   cursor: pointer;
 }
@@ -680,6 +846,10 @@ onMounted(() => {
   border-top: 1px solid var(--app-border-soft);
 }
 
+.composer.with-run-control {
+  grid-template-columns: 1fr minmax(150px, 180px) 120px;
+}
+
 .composer :deep(.el-textarea__inner) {
   min-height: 84px !important;
   resize: none;
@@ -687,6 +857,128 @@ onMounted(() => {
 
 .composer .el-button {
   min-height: 84px;
+}
+
+.composer-run-control {
+  justify-content: center;
+  min-height: 84px;
+  padding: 8px 10px;
+}
+
+.composer-run-control span {
+  min-width: 52px;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, #07100c 48%, transparent);
+  backdrop-filter: blur(5px);
+}
+
+.confirm-dialog {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 14px;
+  width: min(440px, 100%);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-lg);
+  padding: 20px;
+}
+
+.confirm-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--app-warning) 42%, var(--app-border));
+  border-radius: var(--app-radius);
+  color: var(--app-warning);
+  background: var(--app-warning-soft);
+  font-family: var(--app-font-display);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.confirm-copy h3 {
+  margin: 0;
+  color: var(--app-text-heading);
+  font-family: var(--app-font-display);
+  font-size: 18px;
+  font-weight: 820;
+}
+
+.confirm-copy p {
+  margin: 8px 0 0;
+  color: var(--app-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.confirm-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.confirm-button {
+  min-height: 38px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  padding: 0 14px;
+  color: var(--app-text);
+  background: var(--app-surface-raised);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 760;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.confirm-button:hover {
+  transform: translateY(-1px);
+  border-color: var(--app-border-strong);
+  background: var(--app-surface-hover);
+}
+
+.confirm-button.danger {
+  border-color: var(--app-danger);
+  color: #fff;
+  background: var(--app-danger);
+}
+
+.confirm-button.danger:hover {
+  border-color: color-mix(in srgb, var(--app-danger) 86%, #000);
+  background: color-mix(in srgb, var(--app-danger) 86%, #000);
+}
+
+.confirm-fade-enter-active,
+.confirm-fade-leave-active {
+  transition: opacity 0.16s ease;
+}
+
+.confirm-fade-enter-active .confirm-dialog,
+.confirm-fade-leave-active .confirm-dialog {
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.confirm-fade-enter-from,
+.confirm-fade-leave-to {
+  opacity: 0;
+}
+
+.confirm-fade-enter-from .confirm-dialog,
+.confirm-fade-leave-to .confirm-dialog {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
 }
 
 @media (max-width: 900px) {
@@ -714,8 +1006,17 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
+  .composer.with-run-control {
+    grid-template-columns: 1fr;
+  }
+
   .composer .el-button {
     min-height: 42px;
+  }
+
+  .composer-run-control {
+    justify-content: space-between;
+    min-height: 44px;
   }
 
   .bubble {
